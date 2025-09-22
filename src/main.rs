@@ -3,38 +3,14 @@ use std::default::Default;
 use std::iter::Iterator;
 use std::ops::Range;
 
-mod common_traits;
+pub mod common_traits;
 pub use common_traits::*;
-pub use euclid::{*, default::Point2D};
+use euclid::{default::{Point2D, Size2D, Vector2D}, *};
 
 type Color = macroquad::color::Color;
 
-struct Line2D {
-    a: Point2D<f32>,
-    b: Point2D<f32>,
-    clr: Color,
-}
-
-impl Draw for Line2D {
-    fn draw(&self) {
-        draw_line(self.a.x, self.a.y,
-                  self.b.x, self.b.y,
-                  1.0, self.clr);
-    }
-}
-
-struct Circle {
-    center: Point2D<f32>,
-    radius: f32,
-    clr: Color,
-}
-
-impl Draw for Circle {
-    fn draw(&self) {
-        draw_circle(self.center.x, self.center.y,
-                    self.radius, self.clr);
-    }
-}
+pub mod geom;
+pub use geom::{*, Circle, Vertex};
 
 #[derive(Default)]
 struct State {
@@ -67,46 +43,6 @@ frametime: {frametime}
     }
 }
 
-// fn square_grid(spacing: f32, breadth: (Range<f32>, Range<f32>)) -> Vec<Line2d> {
-//     let mut x = breadth.0.start;
-//     let mut y = breadth.1.start;
-
-//     let mut xseq = (0..((breadth.0.end - x)/spacing) as usize)
-//         .into_iter()
-//         .map(|x| (x as f32)*spacing)
-//         .peekable()
-//         .into_iter();
-//     let mut yseq = (0..((breadth.1.end - y)/spacing) as usize)
-//         .into_iter()
-//         .map(|y| (y as f32)*spacing)
-//         .peekable()
-//         .into_iter();
-
-//     let mut lines = vec![];
-//     for y in yseq {
-//         let ny = yseq.peek();
-//         let xseq_copy = xseq.clone();
-//         for x in xseq {
-//             let nx = xseq.peek();
-//             if let Some(nx) = nx {
-//                 lines.push(Line2d {
-//                     a: Point2D<f32> {x, y},
-//                     b: Point2D<f32> { x: *nx, y},
-//                     clr: RED,
-//                 });
-//             }
-//             if let Some(ny) = ny {
-//                 lines.push(Line2d {
-//                     a: Point2D<f32> {x, y},
-//                     b: Point2D<f32> { x, y: *ny },
-//                     clr: RED,
-//                 });
-//             }
-//         }
-//     };
-//     lines
-// }
-
 fn square_grid(spacing: f32, breadth: (Range<f32>, Range<f32>)) -> Vec<Line2D> {
     let mut x = breadth.0.start;
     let mut y = breadth.1.start;
@@ -118,16 +54,16 @@ fn square_grid(spacing: f32, breadth: (Range<f32>, Range<f32>)) -> Vec<Line2D> {
             let nx = x + spacing;
             if breadth.0.contains(&nx) {
                 lines.push(Line2D {
-                    a: Point2D::<f32>::new(x,y),
-                    b: Point2D::<f32>::new(nx, y),
-                    clr: RED,
+                    a: Vertex::new(x,y, Some(RED)),
+                    b: Vertex::new(nx, y, Some(RED)),
+                    thickness: 1.0,
                 });
             }
             if breadth.1.contains(&ny) {
                 lines.push(Line2D {
-                    a: Point2D::<f32>::new(x, y),
-                    b: Point2D::<f32>::new(x, ny),
-                    clr: RED,
+                    a: Vertex::new(x, y, Some(YELLOW.with_alpha(0.1))),
+                    b: Vertex::new(x, ny, Some(YELLOW)),
+                    thickness: 2.0,
                 });
             }
             x = nx;
@@ -143,15 +79,15 @@ async fn main() {
     let mut state: State = Default::default();
 
     state.add_line(Line2D {
-        a: Point2D::<f32>::new(40.0, 40.0),
-        b: Point2D::<f32>::new(100.0, 100.0),
-        clr: BLUE
+        a: Vertex::new(40.0, 40.0, Some(BLUE)),
+        b: Vertex::new(100.0, 100.0, None),
+        thickness: 1.0,
     });
 
     for line in square_grid(20.0, ((0.0..screen_width()), (0.0..screen_height()))) {
         state.add_line(line)
     }
-    state.add_circle(Circle { center: Point2D::<f32>::new(screen_width() - 30.0, screen_height() - 30.0), radius: 15.0, clr: YELLOW });
+    state.add_circle(Circle { center: Vertex::new(screen_width() - 30.0, screen_height() - 30.0, Some(YELLOW)), radius: 15.0 });
     loop {
         if is_quit_requested() { break }
         clear_background(state.clear_color);
@@ -161,7 +97,7 @@ async fn main() {
         }
 
         let line = state.lines.get_mut(0).unwrap();
-        (*line).a = line.a + default::Size2D::<f32>::new(10.0*get_frame_time(), 0.0);
+        line.a.pos += Vector2D::new(10.0*get_frame_time(), 0.0);
 
         draw_rectangle(screen_width() / 2.0 - 60.0, 100.0, 120.0, 60.0, GREEN);
 
