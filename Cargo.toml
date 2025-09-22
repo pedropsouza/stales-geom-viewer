@@ -1,0 +1,9 @@
+[package]
+name = "stales-geom-viewer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+euclid = { version = "0.22.11", features = ["serde", "libm"] }
+macroquad = "0.4"
+slab = "0.4.11"
