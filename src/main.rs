@@ -5,39 +5,67 @@ use std::ops::Range;
 
 pub mod common_traits;
 pub use common_traits::*;
-use euclid::{default::{Point2D, Size2D, Vector2D}, *};
+use euclid::{default::{Box2D, Vector2D}, *};
 
 type Color = macroquad::color::Color;
 
 pub mod geom;
-pub use geom::{*, Circle, Vertex};
+pub use geom::{*, Vertex};
+
+enum Object {
+    Point(geom::Vertex),
+    CircleObj(geom::Circle),
+    LineObj(geom::Line2D),
+    PolyObj(geom::Polygon),
+}
+
+impl Draw for Object {
+    fn draw(&self) {
+        match self {
+            Object::Point(p) => p.draw(),
+            Object::CircleObj(c) => c.draw(),
+            Object::LineObj(l) => l.draw(),
+            Object::PolyObj(p) => p.draw(),
+        }
+    }
+    fn vertices(&self) -> Vec<geom::Vertex> {
+        match self {
+            Object::Point(p) => p.vertices(),
+            Object::CircleObj(c) => c.vertices(),
+            Object::LineObj(l) => l.vertices(),
+            Object::PolyObj(p) => p.vertices(),
+        }
+    }
+}
 
 #[derive(Default)]
 struct State {
-    circles: Vec<Circle>,
-    lines: Vec<Line2D>,
+    objects: Vec<Object>,
     clear_color: Color,
 }
 
 impl State {
-    fn add_line(&mut self, l: Line2D) {
-        self.lines.push(l);
+    fn add_line(&mut self, l: geom::Line2D) {
+        self.objects.push(Object::LineObj(l));
     }
-    fn add_circle(&mut self, c: Circle) {
-        self.circles.push(c);
+    fn add_circle(&mut self, c: geom::Circle) {
+        self.objects.push(Object::CircleObj(c));
     }
-    fn all_drawables(&self) -> impl Iterator<Item = Box<&dyn Draw>> {
-        self.circles.iter()
-                    .map(|x| { let b: Box<&dyn Draw> = Box::new(x); b })
-                    .chain(self.lines.iter().map(|x| { let b: Box<&dyn Draw> = Box::new(x); b }))
+    fn add_poly(&mut self, p: geom::Polygon) {
+        self.objects.push(Object::PolyObj(p))
+    }
+    fn all_drawables(&self) -> impl Iterator<Item = &Object> {
+        self.objects.iter()
     }
     fn text_digest(&self) -> String {
-        let line_cnt = self.lines.len();
-        let circle_cnt = self.circles.len();
+        let line_cnt = self.objects.iter().filter(|x| matches!(x, Object::LineObj(_))).count();
+        let circle_cnt = self.objects.iter().filter(|x| matches!(x, Object::CircleObj(_))).count();
+        let vertex_cnt = self.objects.iter().map(Draw::vertices).fold(0usize, |acc,verts| acc + verts.len());
         let frametime = get_frame_time();
         format!(r"
 num. of lines: {line_cnt}
 num. of circles: {circle_cnt}
+num. of vertices: {vertex_cnt}
 frametime: {frametime}
 ")
     }
@@ -87,7 +115,8 @@ async fn main() {
     for line in square_grid(20.0, ((0.0..screen_width()), (0.0..screen_height()))) {
         state.add_line(line)
     }
-    state.add_circle(Circle { center: Vertex::new(screen_width() - 30.0, screen_height() - 30.0, Some(YELLOW)), radius: 15.0 });
+    state.add_circle(geom::Circle { center: Vertex::new(screen_width() - 30.0, screen_height() - 30.0, Some(YELLOW)), radius: 15.0 });
+    state.add_poly(random_polar_poly(Vertex::new(screen_width()/2.0, screen_height()/2.0, None), 50, 20.0..60.0));
     loop {
         if is_quit_requested() { break }
         clear_background(state.clear_color);
@@ -96,8 +125,9 @@ async fn main() {
             drawable.draw();
         }
 
-        let line = state.lines.get_mut(0).unwrap();
-        line.a.pos += Vector2D::new(10.0*get_frame_time(), 0.0);
+        if let Object::LineObj(line) = state.objects.get_mut(0).unwrap() {
+            line.a.pos += Vector2D::new(10.0*get_frame_time(), 0.0);
+        }
 
         draw_rectangle(screen_width() / 2.0 - 60.0, 100.0, 120.0, 60.0, GREEN);
 
@@ -108,4 +138,30 @@ async fn main() {
         }
         next_frame().await
     }
+}
+
+fn random_polar_poly(origin: Vertex, vert_count: usize, dist_range: Range<f32>) -> Polygon {
+    let mut verts = Vec::with_capacity(vert_count);
+    let mut edges = vec![];
+    let mut faces = vec![];
+
+    verts.push(origin.clone());
+    for i in 1..vert_count {
+        let a = (i as f32)*std::f32::consts::TAU/(vert_count as f32);
+        let d = rand::gen_range(dist_range.start, dist_range.end);
+        verts.push(Vertex::new(
+            origin.pos.x + a.cos()*d,
+            origin.pos.y + a.sin()*d,
+            Some(Color::from_vec(glam::Vec4::from_array(
+                random_color::RandomColor::new().to_f32_rgba_array())))
+                ));
+        if i > 1 && i < vert_count {
+            edges.push((i-1, i, Color::from_vec(glam::Vec4::from_array(
+                random_color::RandomColor::new().to_f32_rgba_array()))));
+            faces.push((0, i-1, i, Color::from_vec(glam::Vec4::from_array(
+                random_color::RandomColor::new().to_f32_rgba_array()))));
+        }
+    }
+
+    Polygon { verts, edges, edge_thickness: 1.0, faces }
 }
