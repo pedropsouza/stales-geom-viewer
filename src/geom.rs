@@ -2,7 +2,7 @@ use euclid::{*, default::Vector2D, vec2};
 use macroquad::prelude::{*};
 use crate::common_traits::*;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Vertex {
     pub pos: Vector2D<f32>,
     pub clr: Option<Color>,
@@ -33,6 +33,7 @@ impl Draw for Vertex {
     }
 }
 
+#[derive(Debug)]
 pub struct Line2D {
     pub a: Vertex,
     pub b: Vertex,
@@ -52,6 +53,36 @@ impl Draw for Line2D {
     }
 }
 
+impl Select for Line2D {
+    fn compute_aabb(&self) -> crate::Box2D<f32> {
+        let xs = {
+            let mut xs = [self.a.pos.x, self.b.pos.x];
+            if xs[0] > xs[1] { xs.reverse(); }
+            xs
+        };
+        let ys = {
+            let mut ys = [self.a.pos.y, self.b.pos.y];
+            if ys[0] > ys[1] { ys.reverse(); }
+            ys
+        };
+        Box2D::new(
+            Point2D::new(xs[0],ys[0]),
+            Point2D::new(xs[1],ys[1]),
+        )
+    }
+
+    fn sample_signed_distance_field(&self, global_sample_point: &Vector2D<f32>) -> f32 {
+        let xs = [self.a.pos.x, self.b.pos.x];
+        let ys = [self.a.pos.y, self.b.pos.y];
+        let tx = global_sample_point.x;
+        let ty = global_sample_point.y;
+        let numer = ((ys[1] - ys[0])*tx - (xs[1] - xs[0])*ty + xs[1]*ys[0] - ys[1]*xs[0]).abs();
+        let denom = ((ys[1] - ys[0]).powi(2) + (xs[1] - xs[0]).powi(2)).sqrt();
+        numer/denom - self.thickness
+    }
+}
+
+#[derive(Debug)]
 pub struct Circle {
     pub center: Vertex,
     pub radius: f32,
@@ -67,6 +98,22 @@ impl Draw for Circle {
     }
 }
 
+impl Select for Circle {
+    fn compute_aabb(&self) -> crate::Box2D<f32> {
+        Box2D::new(
+            Point2D::new(self.center.pos.x - self.radius, self.center.pos.y - self.radius),
+            Point2D::new(self.center.pos.x + self.radius, self.center.pos.y + self.radius),
+        )
+    }
+
+    fn sample_signed_distance_field(&self, global_sample_point: &Vector2D<f32>) -> f32 {
+        let offset = *global_sample_point - self.center.pos;
+        let dist = (offset.x.powi(2) + offset.y.powi(2)).sqrt();
+        dist - self.radius
+    }
+}
+
+#[derive(Debug)]
 pub struct Polygon {
     pub verts: Vec<Vertex>,
     pub edges: Vec<(usize, usize, Color)>,
