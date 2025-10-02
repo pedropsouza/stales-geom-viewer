@@ -1,4 +1,4 @@
-use euclid::{*, default::Vector2D, vec2};
+use euclid::{*, default::Vector2D, default::Box2D, vec2};
 use macroquad::prelude::{*};
 use crate::common_traits::*;
 
@@ -54,7 +54,7 @@ impl Draw for Line2D {
 }
 
 impl Select for Line2D {
-    fn compute_aabb(&self) -> crate::Box2D<f32> {
+    fn compute_aabb(&self) -> Box2D<f32> {
         let xs = {
             let mut xs = [self.a.pos.x, self.b.pos.x];
             if xs[0] > xs[1] { xs.reverse(); }
@@ -99,7 +99,7 @@ impl Draw for Circle {
 }
 
 impl Select for Circle {
-    fn compute_aabb(&self) -> crate::Box2D<f32> {
+    fn compute_aabb(&self) -> Box2D<f32> {
         Box2D::new(
             Point2D::new(self.center.pos.x - self.radius, self.center.pos.y - self.radius),
             Point2D::new(self.center.pos.x + self.radius, self.center.pos.y + self.radius),

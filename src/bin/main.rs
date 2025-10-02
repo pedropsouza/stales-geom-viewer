@@ -7,14 +7,12 @@ use std::{
     fmt::Display,
 };
 
-pub mod common_traits;
-pub use common_traits::*;
+use stales_geom_viewer::common_traits::*;
 use euclid::{default::{Box2D, Vector2D}, *};
 
 type Color = macroquad::color::Color;
 
-pub mod geom;
-pub use geom::{*, Vertex};
+pub use stales_geom_viewer::geom::{self, *, Vertex};
 
 enum Object {
     Point(geom::Vertex),
