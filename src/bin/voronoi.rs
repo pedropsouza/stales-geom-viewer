@@ -3,14 +3,18 @@ use std::{
     default::Default, time::Instant,
     iter::Iterator,
     io::Write,
+    ops::Range,
+    cmp::{Ordering, Ord}
 };
 
-use stales_geom_viewer::common_traits::*;
+use stales_geom_viewer::{
+    utils,
+    common_traits::*,
+    geom::{self, *, Vertex},
+};
 use euclid::{default::{Box2D, Vector2D}, *};
 
 type Color = macroquad::color::Color;
-
-pub use stales_geom_viewer::geom::{self, *, Vertex};
 
 enum Object {
     Point(geom::Vertex),
@@ -83,6 +87,53 @@ enum LogTag {
     Mouse, FrameTime, Select,
 }
 
+#[derive(PartialEq, Eq, Ord, Debug)]
+struct PointPrio<T: Ord + Eq> {
+    pub x: T,
+    pub y: T,
+}
+
+impl<T: Ord + Eq> PartialOrd for PointPrio<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match self.y.partial_cmp(&other.y) {
+            Some(Ordering::Equal) => {}
+            ord => return ord,
+        }
+        self.x.partial_cmp(&other.x)
+    }
+}
+
+fn voronoi(points: &Vec<Vector2D<u64>>) -> Vec<Object> {
+    use priority_queue::PriorityQueue;
+
+    let item_prio_iter = points
+        .into_iter()
+        .cloned()
+        .map(|p| { (p, PointPrio { x: p.x, y: p.y }) });
+    let queue = PriorityQueue::<Vector2D<u64>, PointPrio<u64>>::from_iter(item_prio_iter);
+    println!("debug {:?}", queue);
+    vec![]
+}
+
+fn cheating(points: &Vec<Vector2D<f32>>) -> Vec<Object> {
+    let dcel = voronoi::voronoi(
+        points.iter().map(|v| voronoi::Point::new(v.x.into(), v.y.into())).collect(),
+        1000.0,
+    );
+    let lines = voronoi::make_line_segments(&dcel);
+    lines.into_iter().map(|pts| {
+        Object::LineObj(geom::Line2D {
+            a: geom::Vertex::new(
+                pts[0].x.0 as f32, pts[0].y.0 as f32,
+                Some(utils::random_color())),
+            b: geom::Vertex::new(
+                pts[1].x.0 as f32, pts[1].y.0 as f32,
+                None),
+            thickness: 1.0,
+        })
+    }).collect()
+}
+
 #[macroquad::main("Voronoi")]
 async fn main() {
     let mut state: State = Default::default();
@@ -90,6 +141,21 @@ async fn main() {
     let mut prev_mouse_pos = mouse_position();
 
     let mut logfile = std::fs::File::create("./log.txt").expect("can't create \"./log.txt\" log file!");
+
+    let bounds = (0.0..screen_width(), 0.0..screen_height());
+    let random_float_points = utils::random_points(100, bounds.clone());
+    let random_quant_points = utils::quantize_points(&random_float_points, bounds.clone());
+    //let voronoi_lines = voronoi(&random_quant_points);
+    let voronoi_lines = cheating(&random_float_points);
+    state.objects.extend(voronoi_lines.into_iter());
+
+    for p in &random_float_points {
+        state.add_circle(geom::Circle {
+            center: Vertex::new(p.x, p.y,
+                                Some(utils::random_color())),
+            radius: 5.0,
+        });
+    }
 
     loop {
         let tick_time = {
