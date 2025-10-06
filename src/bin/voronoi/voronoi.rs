@@ -1,4 +1,3 @@
-use dcel::add_faces;
 use macroquad::prelude::*;
 use genmap::GenMap;
 
@@ -12,7 +11,7 @@ use petgraph::{graph::node_index, visit::EdgeRef};
 use stales_geom_viewer::point::Point;
 
 use std::{
-    cmp::{Ord, Ordering}, collections::{hash_map, HashMap}, default::Default, io::Write, iter::Iterator, time::Instant
+    cmp::{Ord, Ordering}, collections::HashMap, default::Default, io::Write, iter::Iterator, time::Instant
 };
 
 use stales_geom_viewer::{
@@ -20,7 +19,7 @@ use stales_geom_viewer::{
     common_traits::*,
     geom::{self, *, Vertex},
 };
-use euclid::{default::{Box2D, Vector2D}, *};
+use euclid::default::Vector2D;
 
 type Color = macroquad::color::Color;
 
@@ -396,37 +395,27 @@ impl Algo {
     }
 }
 
-fn cheating(points: &Vec<Vector2D<f32>>) -> Vec<Object> {
-    let dcel = voronoi::voronoi(
-        points.iter().map(|v| voronoi::Point::new(v.x.into(), v.y.into())).collect(),
-        1000.0,
-    );
-    let lines = voronoi::make_line_segments(&dcel);
-    lines.into_iter().map(|pts| {
-        Object::LineObj(geom::Line2D {
-            a: geom::Vertex::new(
-                pts[0].x.0 as f32, pts[0].y.0 as f32,
-                Some(utils::random_color())),
-            b: geom::Vertex::new(
-                pts[1].x.0 as f32, pts[1].y.0 as f32,
-                None),
-            thickness: 1.0,
-        })
-    }).collect()
-}
-
 #[macroquad::main("Voronoi")]
 async fn main() {
-    request_new_screen_size(1920.0, 1080.0);
+    const WIDTH: f32 = 1800.0;
+    const HEIGHT: f32 = 1000.0;
+    request_new_screen_size(WIDTH, HEIGHT);
     let mut state: State = Default::default();
     let startup = Instant::now();
     let mut prev_mouse_pos = mouse_position();
 
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(log::LevelFilter::Trace)
+        .init().unwrap();
+    log::log!(log::Level::Error, "aaaaarhg");
+    log::info!("up and running");
+    
     let mut logfile = std::fs::File::create("./log.txt").expect("can't create \"./log.txt\" log file!");
     const CIRCLE_RADIUS: f32 = 4.0;
 
-    let bounds = (0.0..screen_width(), 0.0..screen_height());
-    let random_float_points = utils::random_points(10, bounds.clone());
+    let bounds = (0.0..WIDTH, 0.0..HEIGHT);
+    let random_float_points = utils::random_points(1000, bounds.clone());
 
     for p in &random_float_points {
         state.add_circle(geom::Circle {
@@ -446,36 +435,24 @@ async fn main() {
         while voronoi_state.process_next_event() {};
 
         let mut interim_dcel = voronoi_state.output.clone();
-        add_bounding_box(1000.0, &voronoi_state.beachline, &mut interim_dcel);
+        add_bounding_box(WIDTH.max(HEIGHT).into(), &voronoi_state.beachline, &mut interim_dcel);
         dcel::add_faces(&mut interim_dcel);
 
+        let poly = dcel_to_wire_poly(&interim_dcel);
 
-        trace!("voronoi dcel: {:?}", interim_dcel);
-
-        let poly = dcel_to_wire_poly_3(&interim_dcel);
-        trace!("voronoi poly: {:?}", poly);
-
-        let delauney = {
-            // all the vertices are the same as the input to the voronoi algo
-            // we only need the voronoi result to know which edges to create
-            let mut poly = Polygon {
-                verts: input_verts.iter().map(|v| Vertex::new(v.x() as f32, v.y() as f32, Some(utils::random_color()))).collect(),
-                ..Default::default()
-            };
-            //for 
-        };
+        // let delauney = {
+        //     // all the vertices are the same as the input to the voronoi algo
+        //     // we only need the voronoi result to know which edges to create
+        //     let mut poly = Polygon {
+        //         verts: input_verts.iter().map(|v| Vertex::new(v.x() as f32, v.y() as f32, Some(utils::random_color()))).collect(),
+        //         ..Default::default()
+        //     };
+        //     //for 
+        // }
         poly
     };
 
     let mut voronoi_poly = voronoi_calc(&state);
-    let cheat_poly_calc = |state: &State| {
-        if state.all_elements().count() == 0 { return Polygon::default() }
-        dcel_to_wire_poly_2(&voronoi::voronoi(state.all_elements().map(|(_,elem)| {
-            let center = elem.compute_aabb().center();
-            voronoi::Point::new(center.x as f64, center.y as f64)
-        }).collect(), 1000.0))
-    };
-    let mut cheat_poly = cheat_poly_calc(&state);
 
     loop {
         let tick_time = {
@@ -497,11 +474,7 @@ async fn main() {
             object.draw();
         }
 
-        if is_key_down(KeyCode::C) {
-            cheat_poly.draw();
-        } else {
-            voronoi_poly.draw();
-        }
+        voronoi_poly.draw();
 
         { // Mouse handling
             let mouse_pos = mouse_position();
@@ -534,7 +507,6 @@ async fn main() {
                 }
 
                 voronoi_poly = voronoi_calc(&state);
-                cheat_poly = cheat_poly_calc(&state);
             }
         }
 
@@ -551,57 +523,6 @@ pub fn dcel_to_wire_poly(source: &dcel::DCEL) -> Polygon {
     let mut poly = Polygon::default();
     let mut verts_map = HashMap::new();
     for face in make_polygons(&source) {
-        let mut vert_ids = vec![];
-        for vert in face.iter() {
-            let idx = verts_map
-                .entry(Point::new(vert.x(), vert.y()))
-                .or_insert_with_key(|vert| {
-                    poly.verts.push(
-                        Vertex::new(
-                            vert.x() as f32, vert.y() as f32,
-                            Some(utils::random_color())
-                        )
-                    );
-                    poly.verts.len()-1
-                });
-            vert_ids.push(*idx);
-        }
-        for (a,b) in vert_ids.iter()
-                             .take(vert_ids.len()-1)
-                             .zip(vert_ids.iter().skip(1).cycle()) {
-            poly.edges.push((*a, *b, utils::random_color()));
-        }
-    }
-    poly
-}
-
-pub fn dcel_to_wire_poly_3(source: &dcel::DCEL) -> Polygon {
-    let mut poly = Polygon::default();
-    let mut verts_map = HashMap::new();
-    for segment in make_line_segments(source) {
-        let mut vert_ids = vec![];
-        for vert in segment {
-            let idx = verts_map
-                .entry(Point::new(vert.x(), vert.y()))
-                .or_insert_with_key(|vert| {
-                    poly.verts.push(Vertex::new(
-                        vert.x() as f32, vert.y() as f32,
-                        Some(utils::random_color()),
-                    ));
-                    poly.verts.len()-1
-                });
-            vert_ids.push(*idx);
-        }
-        assert!(vert_ids.len() == 2);
-        poly.edges.push((vert_ids[0], vert_ids[1], utils::random_color()));
-    }
-    poly
-}
-
-pub fn dcel_to_wire_poly_2(source: &voronoi::DCEL) -> Polygon {
-    let mut poly = Polygon::default();
-    let mut verts_map = HashMap::new();
-    for face in voronoi::make_polygons(&source) {
         let mut vert_ids = vec![];
         for vert in face.iter() {
             let idx = verts_map
