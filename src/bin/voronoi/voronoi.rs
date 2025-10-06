@@ -1,4 +1,6 @@
+use dcel::add_faces;
 use macroquad::prelude::*;
+use genmap::GenMap;
 
 pub mod event;
 pub mod beachline;
@@ -10,10 +12,7 @@ use petgraph::{graph::node_index, visit::EdgeRef};
 use stales_geom_viewer::point::Point;
 
 use std::{
-    default::Default, time::Instant,
-    iter::Iterator,
-    io::Write,
-    cmp::{Ordering, Ord}
+    cmp::{Ord, Ordering}, collections::{hash_map, HashMap}, default::Default, io::Write, iter::Iterator, time::Instant
 };
 
 use stales_geom_viewer::{
@@ -51,36 +50,52 @@ impl Draw for Object {
     }
 }
 
-#[derive(Default)]
 struct State {
-    pub objects: Vec<Object>,
+    pub objects: GenMap<Object>,
     pub clear_color: Color,
 }
 
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            objects: GenMap::with_capacity(1000),
+            clear_color: BLACK,
+        }
+    }
+}
+
 impl State {
-    fn add_line(&mut self, l: geom::Line2D) {
-        self.objects.push(Object::LineObj(l));
+    fn add_line(&mut self, l: geom::Line2D) -> genmap::Handle {
+        self.objects.insert(Object::LineObj(l))
+
     }
-    fn add_circle(&mut self, c: geom::Circle) {
-        self.objects.push(Object::CircleObj(c));
+    fn add_circle(&mut self, c: geom::Circle) -> genmap::Handle {
+        self.objects.insert(Object::CircleObj(c))
     }
-    fn add_poly(&mut self, p: geom::Polygon) {
-        self.objects.push(Object::PolyObj(p))
+    fn add_poly(&mut self, p: geom::Polygon) -> genmap::Handle {
+        self.objects.insert(Object::PolyObj(p))
     }
-    fn all_elements(&self) -> impl Iterator<Item = &dyn Element> {
+    fn all_elements(&self) -> impl Iterator<Item = (genmap::Handle, &dyn Element)> {
         self.objects.iter().flat_map(|x| {
-            match x {
-                Object::Point(_p) => None,
-                Object::CircleObj(c) => Some(c as &dyn Element),
-                Object::LineObj(l) => Some(l as &dyn Element),
-                Object::PolyObj(_p) => None,
-            }
-        })
+            self.objects.get(x).and_then(|obj|
+                match obj {
+                    Object::Point(_p) => None,
+                    Object::CircleObj(c) => Some(c as &dyn Element),
+                    Object::LineObj(l) => Some(l as &dyn Element),
+                    Object::PolyObj(_p) => None,
+                }).map(|elem| (x, elem))
+            })
     }
     fn text_digest(&self) -> String {
-        let line_cnt = self.objects.iter().filter(|x| matches!(x, Object::LineObj(_))).count();
-        let circle_cnt = self.objects.iter().filter(|x| matches!(x, Object::CircleObj(_))).count();
-        let vertex_cnt = self.objects.iter().map(Draw::vertices).fold(0usize, |acc,verts| acc + verts.len());
+        let line_cnt = self.objects
+                           .iter().flat_map(|x| self.objects.get(x))
+                           .filter(|x| matches!(x, Object::LineObj(_))).count();
+        let circle_cnt = self.objects
+                             .iter().flat_map(|x| self.objects.get(x))
+                             .filter(|x| matches!(x, Object::CircleObj(_))).count();
+        let vertex_cnt = self.objects
+                             .iter().flat_map(|x| self.objects.get(x))
+                                    .map(Draw::vertices).fold(0usize, |acc,verts| acc + verts.len());
         let frametime = get_frame_time();
         format!(r"
 num. of lines: {line_cnt}
@@ -132,7 +147,8 @@ impl Algo {
         }
     }
 
-    pub fn process_next_event(&mut self) {
+    // returns true if it still has work to do
+    pub fn process_next_event(&mut self) -> bool {
         if let Some(event) = self.event_queue.pop() {
             trace!("processing event {:?}", event);
             match event {
@@ -143,7 +159,9 @@ impl Algo {
                     self.handle_circle_event(data);
                 }
             }
+            return true
         }
+        false
     }
 
     pub fn handle_site_event(&mut self, site: Point) {
@@ -225,7 +243,6 @@ impl Algo {
     }
 
     fn handle_circle_event(&mut self, data: CircleEvent) {
-        let queue = &mut self.event_queue;
         let leaf = data.vanishing_arc;
         let left_neighbor = self.beachline.get_left_arc(Some(leaf)).unwrap();
         let right_neighbor = self.beachline.get_right_arc(Some(leaf)).unwrap();
@@ -358,7 +375,7 @@ impl Algo {
                 panic!("tree is borked");
             }
         } else {
-            self.beachline.root = ind_AB;
+            self.beachline.root = Some(ind_AB);
         }
         return ind_B;
     }
@@ -377,11 +394,6 @@ impl Algo {
             }
         }
     }
-}
-
-fn voronoi(points: &Vec<Point>) -> Vec<Object> {
-    let state = Algo::new(points);
-    vec![]
 }
 
 fn cheating(points: &Vec<Vector2D<f32>>) -> Vec<Object> {
@@ -405,28 +417,65 @@ fn cheating(points: &Vec<Vector2D<f32>>) -> Vec<Object> {
 
 #[macroquad::main("Voronoi")]
 async fn main() {
+    request_new_screen_size(1920.0, 1080.0);
     let mut state: State = Default::default();
     let startup = Instant::now();
     let mut prev_mouse_pos = mouse_position();
 
     let mut logfile = std::fs::File::create("./log.txt").expect("can't create \"./log.txt\" log file!");
+    const CIRCLE_RADIUS: f32 = 4.0;
 
     let bounds = (0.0..screen_width(), 0.0..screen_height());
-    let random_float_points = utils::random_points(100, bounds.clone());
-    let voronoi_lines = voronoi(&random_float_points
-                                .iter().cloned()
-                                .map(|v| Point::new(v.x.into(), v.y.into()))
-                                .collect());
-    let voronoi_lines = cheating(&random_float_points);
-    state.objects.extend(voronoi_lines.into_iter());
+    let random_float_points = utils::random_points(10, bounds.clone());
 
     for p in &random_float_points {
         state.add_circle(geom::Circle {
             center: Vertex::new(p.x, p.y,
                                 Some(utils::random_color())),
-            radius: 5.0,
+            radius: CIRCLE_RADIUS,
         });
     }
+
+    let mut voronoi_state = Algo::new(&vec![]);
+    let mut voronoi_calc = |state: &State| {
+        let mut input_verts = state.all_elements().map(|(_,elem)| {
+            let center = elem.compute_aabb().center();
+            Point::new(center.x as f64, center.y as f64)
+        }).collect();
+        voronoi_state = Algo::new(&input_verts);
+        while voronoi_state.process_next_event() {};
+
+        let mut interim_dcel = voronoi_state.output.clone();
+        add_bounding_box(1000.0, &voronoi_state.beachline, &mut interim_dcel);
+        dcel::add_faces(&mut interim_dcel);
+
+
+        trace!("voronoi dcel: {:?}", interim_dcel);
+
+        let poly = dcel_to_wire_poly_3(&interim_dcel);
+        trace!("voronoi poly: {:?}", poly);
+
+        let delauney = {
+            // all the vertices are the same as the input to the voronoi algo
+            // we only need the voronoi result to know which edges to create
+            let mut poly = Polygon {
+                verts: input_verts.iter().map(|v| Vertex::new(v.x() as f32, v.y() as f32, Some(utils::random_color()))).collect(),
+                ..Default::default()
+            };
+            //for 
+        };
+        poly
+    };
+
+    let mut voronoi_poly = voronoi_calc(&state);
+    let cheat_poly_calc = |state: &State| {
+        if state.all_elements().count() == 0 { return Polygon::default() }
+        dcel_to_wire_poly_2(&voronoi::voronoi(state.all_elements().map(|(_,elem)| {
+            let center = elem.compute_aabb().center();
+            voronoi::Point::new(center.x as f64, center.y as f64)
+        }).collect(), 1000.0))
+    };
+    let mut cheat_poly = cheat_poly_calc(&state);
 
     loop {
         let tick_time = {
@@ -443,8 +492,15 @@ async fn main() {
         if is_quit_requested() { break }
         clear_background(state.clear_color);
 
-        for object in &state.objects {
+        for handle in state.objects.iter() {
+            let object = state.objects.get(handle).unwrap();
             object.draw();
+        }
+
+        if is_key_down(KeyCode::C) {
+            cheat_poly.draw();
+        } else {
+            voronoi_poly.draw();
         }
 
         { // Mouse handling
@@ -454,15 +510,31 @@ async fn main() {
                 prev_mouse_pos = mouse_pos;
             }
 
-            if is_mouse_button_pressed(MouseButton::Left) {
+            if is_mouse_button_pressed(MouseButton::Left) || is_mouse_button_pressed(MouseButton::Right) {
                 log_line(LogTag::Mouse, &format!("clicked {},{}", mouse_pos.0, mouse_pos.1));
 
-                for element in state.all_elements() {
+                let mut hit_elem = None;
+                let delete = is_mouse_button_pressed(MouseButton::Right);
+                for (handle,element) in state.all_elements() {
                     if element.contains_point(&Vector2D::new(mouse_pos.0, mouse_pos.1)) {
                         log_line(LogTag::Select, &format!("selected {:?}", element));
+                        hit_elem = Some(handle);
+                        break;
                     }
                 }
+                if let Some(elem) = hit_elem {
+                    if delete {
+                        state.objects.remove(elem);
+                    }
+                } else {
+                    state.add_circle(geom::Circle {
+                        center: Vertex::new(mouse_pos.0, mouse_pos.1, Some(utils::random_color())),
+                        radius: CIRCLE_RADIUS,
+                    });
+                }
 
+                voronoi_poly = voronoi_calc(&state);
+                cheat_poly = cheat_poly_calc(&state);
             }
         }
 
@@ -475,3 +547,180 @@ async fn main() {
     }
 }
 
+pub fn dcel_to_wire_poly(source: &dcel::DCEL) -> Polygon {
+    let mut poly = Polygon::default();
+    let mut verts_map = HashMap::new();
+    for face in make_polygons(&source) {
+        let mut vert_ids = vec![];
+        for vert in face.iter() {
+            let idx = verts_map
+                .entry(Point::new(vert.x(), vert.y()))
+                .or_insert_with_key(|vert| {
+                    poly.verts.push(
+                        Vertex::new(
+                            vert.x() as f32, vert.y() as f32,
+                            Some(utils::random_color())
+                        )
+                    );
+                    poly.verts.len()-1
+                });
+            vert_ids.push(*idx);
+        }
+        for (a,b) in vert_ids.iter()
+                             .take(vert_ids.len()-1)
+                             .zip(vert_ids.iter().skip(1).cycle()) {
+            poly.edges.push((*a, *b, utils::random_color()));
+        }
+    }
+    poly
+}
+
+pub fn dcel_to_wire_poly_3(source: &dcel::DCEL) -> Polygon {
+    let mut poly = Polygon::default();
+    let mut verts_map = HashMap::new();
+    for segment in make_line_segments(source) {
+        let mut vert_ids = vec![];
+        for vert in segment {
+            let idx = verts_map
+                .entry(Point::new(vert.x(), vert.y()))
+                .or_insert_with_key(|vert| {
+                    poly.verts.push(Vertex::new(
+                        vert.x() as f32, vert.y() as f32,
+                        Some(utils::random_color()),
+                    ));
+                    poly.verts.len()-1
+                });
+            vert_ids.push(*idx);
+        }
+        assert!(vert_ids.len() == 2);
+        poly.edges.push((vert_ids[0], vert_ids[1], utils::random_color()));
+    }
+    poly
+}
+
+pub fn dcel_to_wire_poly_2(source: &voronoi::DCEL) -> Polygon {
+    let mut poly = Polygon::default();
+    let mut verts_map = HashMap::new();
+    for face in voronoi::make_polygons(&source) {
+        let mut vert_ids = vec![];
+        for vert in face.iter() {
+            let idx = verts_map
+                .entry(Point::new(vert.x(), vert.y()))
+                .or_insert_with_key(|vert| {
+                    poly.verts.push(
+                        Vertex::new(
+                            vert.x() as f32, vert.y() as f32,
+                            Some(utils::random_color())
+                        )
+                    );
+                    poly.verts.len()-1
+                });
+            vert_ids.push(*idx);
+        }
+        for (a,b) in vert_ids.iter()
+                             .take(vert_ids.len()-1)
+                             .zip(vert_ids.iter().skip(1).cycle()) {
+            poly.edges.push((*a, *b, utils::random_color()));
+        }
+    }
+    poly
+}
+
+// impl for our DCEL newtype
+pub fn make_polygons(dcel: &dcel::DCEL) -> Vec<Vec<Point>> {
+    let mut result = vec![];
+    for face in &dcel.faces {
+        if !face.alive { continue; }
+        let mut this_poly = vec![];
+        let start_edge = face.outer_component;
+        let mut current_edge = start_edge;
+        loop {
+            this_poly.push(dcel.get_origin(current_edge));
+            current_edge = dcel.halfedges[current_edge].next;
+            if current_edge == start_edge { break; }
+        }
+        result.push(this_poly);
+    }
+
+    // remove the outer face
+    result.sort_by(|a, b| a.len().cmp(&b.len()));
+    result.pop();
+
+    return result;
+}
+
+/// Constructs the line segments of the Voronoi diagram.
+pub fn make_line_segments(dcel: &dcel::DCEL) -> Vec<Segment> {
+    const NIL: usize = !0;
+    let mut result = vec![];
+    for halfedge in &dcel.halfedges {
+        if halfedge.origin != NIL && halfedge.next != NIL && halfedge.alive {
+            if dcel.halfedges[halfedge.next].origin != NIL {
+                result.push([dcel.vertices[halfedge.origin].coordinates,
+                    dcel.get_origin(halfedge.next)])
+            }
+        }
+    }
+    result
+}
+
+fn outside_bb(pt: Point, box_size: f64) -> bool {
+    let delta = 0.1;
+    pt.x() < 0. - delta || pt.x() > box_size + delta || pt.y() < 0. - delta || pt.y() > box_size + delta
+}
+
+fn add_bounding_box(boxsize: f64, beachline: &beachline::Beachline, dcel: &mut dcel::DCEL) {
+    extend_edges(beachline, dcel);
+
+    let delta = 50.;
+    let bb_top =    [Point::new(0. - delta, 0.),         Point::new(boxsize + delta, 0.)];
+    let bb_bottom = [Point::new(0. - delta, boxsize),    Point::new(boxsize + delta, boxsize)];
+    let bb_left =   [Point::new(0.,         0. - delta), Point::new(0.,              boxsize + delta)];
+    let bb_right =  [Point::new(boxsize,    0. - delta), Point::new(boxsize,         boxsize + delta)];
+
+    dcel::add_line(bb_top, dcel);
+    dcel::add_line(bb_right, dcel);
+    dcel::add_line(bb_left, dcel);
+    dcel::add_line(bb_bottom, dcel);
+
+    dcel.set_prev();
+
+    for vert in 0..dcel.vertices.len() {
+        let this_pt = dcel.vertices[vert].coordinates;
+        if outside_bb(this_pt, boxsize) {
+            dcel.remove_vertex(vert);
+        }
+    }
+
+}
+
+// This just extends the edges past the end of the bounding box
+fn extend_edges(beachline: &Beachline, dcel: &mut dcel::DCEL) {
+    if beachline.root.is_none() { return; }
+    let mut current_node = beachline.tree_minimum(beachline.root.unwrap());
+    trace!("\n\n");
+    loop {
+        match beachline.graph[node_index(current_node)].item {
+            BeachItem::Arc(_) => {},
+            BeachItem::Breakpoint(ref breakpoint) => {
+                let this_edge = breakpoint.edge_idx;
+                trace!("Extending halfedge {:?} with breakpoint {:?}, {:?}", this_edge, breakpoint.left, breakpoint.right);
+                let this_x = breakpoint.get_x(-1000.0);
+                let this_y = breakpoint.get_y(-1000.0);
+
+                let vert = dcel::Vertex {coordinates: Point::new(this_x, this_y), incident_edge: this_edge, alive: true};
+                let vert_ind = dcel.vertices.len();
+
+                dcel.halfedges[this_edge].origin = vert_ind;
+                let this_twin = dcel.halfedges[this_edge].twin;
+                dcel.halfedges[this_twin].next = this_edge;
+
+                dcel.vertices.push(vert);
+            }
+        }
+        if let Some(next_node) = beachline.successor(current_node) {
+            current_node = next_node;
+        } else { break; }
+    }
+
+}

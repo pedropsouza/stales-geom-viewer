@@ -129,6 +129,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
 
 [[package]]
+name = "genmap"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21fa2ad08db7ccdfaf1ce7c827caa53e1f1f7cdeb1144f877ebd2ef43ed4c0d3"
+
+[[package]]
 name = "getrandom"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -540,6 +546,7 @@ version = "0.1.0"
 dependencies = [
  "euclid",
  "fnv",
+ "genmap",
  "log 0.4.28",
  "macroquad",
  "ordered-float 5.1.0",

@@ -7,6 +7,7 @@ use macroquad::logging::*;
 
 const NIL: usize = !0;
 
+#[derive(Clone)]
 /// Doubly Connected Edge List representation of a subdivision of the plane.
 pub struct DCEL {
     /// Vertices
@@ -132,6 +133,7 @@ impl fmt::Debug for DCEL {
     }
 }
 
+#[derive(Clone)]
 /// A vertex of a DCEL
 pub struct Vertex {
     /// (x, y) coordinates
@@ -148,8 +150,11 @@ impl fmt::Debug for Vertex {
     }
 }
 
+#[derive(Clone)]
 /// A halfedge of a DCEL
 pub struct HalfEdge {
+    /// The index of the closest input vertex on our side of the edge
+    pub input_vertex: usize,
     /// The index of the vertex at the start of the halfedge
     pub origin: usize, // index of vertex
     /// The index of the twin halfedge
@@ -158,7 +163,7 @@ pub struct HalfEdge {
     pub next: usize, // index of halfedge
     face: usize, // index of face
     prev: usize, // index of halfedge
-    alive: bool,
+    pub alive: bool,
 }
 
 impl fmt::Debug for HalfEdge {
@@ -170,15 +175,15 @@ impl fmt::Debug for HalfEdge {
 impl HalfEdge {
     /// Construct an empty halfedge
     pub fn new() -> Self {
-        HalfEdge {origin: NIL, twin: NIL, next: NIL, face: NIL, prev: NIL, alive: true}
+        HalfEdge {input_vertex: NIL, origin: NIL, twin: NIL, next: NIL, face: NIL, prev: NIL, alive: true}
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// A face of a DCEL
 pub struct Face {
-    outer_component: usize, // index of halfedge
-    alive: bool,
+    pub outer_component: usize, // index of halfedge
+    pub alive: bool,
 }
 
 impl fmt::Display for Face {
@@ -255,7 +260,7 @@ pub fn add_line(seg: Segment, dcel: &mut DCEL) {
         dcel.halfedges[cut_edge].next = line_needs_prev;
 
         let cut_ext_ind = dcel.halfedges.len();
-        let cut_ext_he = HalfEdge { origin: new_pt_ind, next: old_cut_next, twin: old_cut_twin, face: NIL, prev: NIL, alive: true };
+        let cut_ext_he = HalfEdge { input_vertex: NIL, origin: new_pt_ind, next: old_cut_next, twin: old_cut_twin, face: NIL, prev: NIL, alive: true };
         dcel.halfedges.push(cut_ext_he);
         dcel.halfedges[line_needs_next].next = cut_ext_ind;
 
@@ -263,7 +268,7 @@ pub fn add_line(seg: Segment, dcel: &mut DCEL) {
         dcel.halfedges[old_cut_twin].next = new_line_needs_next;
 
         let twin_ext_ind = dcel.halfedges.len();
-        let twin_ext_he = HalfEdge { origin: new_pt_ind, next: old_twin_next, twin: cut_edge, face: NIL, prev: NIL, alive: true };
+        let twin_ext_he = HalfEdge { input_vertex: NIL, origin: new_pt_ind, next: old_twin_next, twin: cut_edge, face: NIL, prev: NIL, alive: true };
         dcel.halfedges.push(twin_ext_he);
         dcel.halfedges[new_line_needs_prev].next = twin_ext_ind;
 

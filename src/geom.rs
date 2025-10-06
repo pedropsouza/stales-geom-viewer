@@ -124,6 +124,12 @@ pub struct Polygon {
     pub faces: Vec<(usize, usize, usize, Color)>,
 }
 
+impl Default for Polygon {
+    fn default() -> Self {
+        Self { verts: vec![], edges: vec![], faces: vec![], edge_thickness: 2.0 }
+    }
+}
+
 impl Draw for Polygon {
     fn draw(&self) {
         for edge_data in &self.edges {

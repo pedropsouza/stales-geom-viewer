@@ -5,7 +5,7 @@ use ordered_float::OrderedFloat;
 use std::cmp::Ordering;
 
 /// A point in two dimensions
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Point(euclid::default::Vector2D<ordered_float::OrderedFloat<f64>>);
 
 impl Point {

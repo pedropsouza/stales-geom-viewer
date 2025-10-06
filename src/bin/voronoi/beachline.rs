@@ -12,7 +12,7 @@ const NIL: usize = !0;
 #[derive(Debug)]
 pub struct Beachline {
     pub graph: DiGraph<BeachNode, (), usize>,
-    pub root: usize,
+    pub root: Option<usize>,
 }
 
 #[derive(Debug)]
@@ -40,7 +40,7 @@ impl BeachNode {
 #[derive(Debug, Clone)]
 pub struct Breakpoint { pub left: Point, pub right: Point, pub edge_idx: usize, }
 impl Breakpoint {
-    fn get_x(&self, yl: f64) -> f64 {
+    pub fn get_x(&self, yl: f64) -> f64 {
         let ax = self.left.x();
         let bx = self.right.x();
         let ay = self.left.y();
@@ -105,7 +105,7 @@ impl Beachline {
     pub fn new() -> Self {
         Beachline {
             graph: petgraph::graph::DiGraph::default(),
-            root: NIL,
+            root: None,
         }
     }
 
@@ -118,12 +118,13 @@ impl Beachline {
         let item = BeachItem::Arc(arc);
         let node = BeachNode::make_root(item);
         let idx = self.graph.add_node(node);
-        self.root = idx.index();
+        self.root = Some(idx.index());
     }
 
     pub fn get_arc_above(&self, pt: Point) -> usize {
+        if self.root.is_none() { panic!("no vertices!") }
         if self.is_empty() { panic!("can't get_arc_above on an empty beachline!"); }
-        let mut current_node = self.root;
+        let mut current_node = self.root.unwrap();
         loop {
             let node = &self.graph[node_index(current_node)];
             match node.item {
