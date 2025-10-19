@@ -4,14 +4,24 @@ use petgraph::{
     graph::{DiGraph, node_index},
 };
 
+use std::fmt::Display;
+
 use crate::Point;
 type TripleSite = (Point, Point, Point);
 
 const NIL: usize = !0;
 
 #[derive(Debug)]
+pub struct DummyEdgeWeight;
+impl Display for DummyEdgeWeight {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
 pub struct Beachline {
-    pub graph: DiGraph<BeachNode, (), usize>,
+    pub graph: DiGraph<BeachNode, DummyEdgeWeight, usize>,
     pub root: Option<usize>,
 }
 
@@ -21,6 +31,15 @@ pub struct BeachNode {
     pub left: Option<usize>,
     pub right: Option<usize>,
     pub item: BeachItem,
+}
+
+impl Display for BeachNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let or_nothing = |opt: Option<usize>| opt.map_or("nothing".to_string(), |x| x.to_string()); 
+        write!(f, "node from {} to ({},{}) with {}",
+               or_nothing(self.parent),
+               or_nothing(self.left), or_nothing(self.right), self.item)
+    }
 }
 
 impl BeachNode {
@@ -99,6 +118,16 @@ pub struct Arc { pub site: Point, pub site_event: Option<usize>, }
 pub enum BeachItem {
     Breakpoint(Breakpoint),
     Arc(Arc)
+}
+
+impl Display for BeachItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let or_nothing = |opt: Option<usize>| opt.map_or("nothing".to_string(), |x| x.to_string());
+        match self {
+            BeachItem::Arc(ref arc) => write!(f, "arc focus {:?} event {}", arc.site, or_nothing(arc.site_event)),
+            BeachItem::Breakpoint(ref bp) => write!(f, "breakp l {:?} r {:?} edge {}", bp.left, bp.right, bp.edge_idx),
+        }
+    }
 }
 
 impl Beachline {

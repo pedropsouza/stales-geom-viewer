@@ -1,5 +1,6 @@
 use euclid::{*, default::Vector2D, default::Box2D, vec2};
 use macroquad::prelude::{*};
+use ::rand::seq::IteratorRandom;
 use crate::{
     point::Point,
     common_traits::*,
@@ -122,6 +123,42 @@ pub struct Polygon {
     pub edges: Vec<(usize, usize, Color)>,
     pub edge_thickness: f32,
     pub faces: Vec<(usize, usize, usize, Color)>,
+}
+
+impl Polygon {
+    pub fn circle(vert_count: usize, radius: f32, edge_color: Color) -> Self {
+        const TAU: f32 = std::f32::consts::PI * 2.0;
+        let verts = (0..vert_count).map(|i| {
+            Vertex::new(
+                radius * ((i as f32)*TAU/(vert_count as f32)).cos(),
+                radius * ((i as f32)*TAU/(vert_count as f32)).sin(),
+                None,
+            )
+        }).collect();
+
+        let edges = {
+            let srcs = (0..vert_count).into_iter();
+            let dsts = (1..vert_count).into_iter().chain(std::iter::once(0));
+            srcs.zip(dsts).map(|e| (e.0, e.1, edge_color)).collect()
+        };
+
+        // TODO: faces
+
+        Self {
+            verts, edges, edge_thickness: 1.0, faces: vec![],
+        }
+    }
+
+    pub fn rectangle(a: Vector2D<f32>, b: Vector2D<f32>, edge_color: Color, face_color: Color) -> Self {
+        Self {
+            verts: [a, Vector2D::new(b.x, a.y), b, Vector2D::new(a.x, b.y)]
+                .iter()
+                .map(|pos| Vertex::new(pos.x, pos.y, None)).collect(),
+            edges: [(0,1),(1,2),(2,3),(3,0)].iter().map(|e| (e.0, e.1, edge_color)).collect(),
+            faces: [(0,1,2), (0,2,3)].iter().map(|f| (f.0,f.1,f.2, face_color)).collect(),
+            edge_thickness: 1.0,
+        }
+    }
 }
 
 impl Default for Polygon {

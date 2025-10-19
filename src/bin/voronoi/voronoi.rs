@@ -1,4 +1,4 @@
-use macroquad::prelude::*;
+use macroquad::{miniquad::native::linux_x11::libx11::Display, prelude::*};
 use genmap::GenMap;
 
 pub mod event;
@@ -6,12 +6,12 @@ pub mod beachline;
 pub mod dcel;
 
 use event::*;
-use beachline::{BeachItem, Beachline, Breakpoint};
-use petgraph::{graph::node_index, visit::EdgeRef};
+use beachline::{BeachItem, BeachNode, Beachline, Breakpoint};
+use petgraph::{graph::node_index, visit::{EdgeRef, GraphProp, IntoEdgeReferences, IntoNodeReferences, NodeIndexable}};
 use stales_geom_viewer::point::Point;
 
 use std::{
-    cmp::{Ord, Ordering}, collections::HashMap, default::Default, io::Write, iter::Iterator, time::Instant
+    cmp::{Ord, Ordering}, collections::HashMap, default::Default, fmt::Debug, fs::File, io::Write, iter::Iterator, time::Instant
 };
 
 use stales_geom_viewer::{
@@ -52,6 +52,9 @@ impl Draw for Object {
 struct State {
     pub objects: GenMap<Object>,
     pub clear_color: Color,
+    pub startup: Instant,
+    pub prev_mouse_pos: (f32, f32),
+    pub logfile: std::fs::File,
 }
 
 impl Default for State {
@@ -59,6 +62,9 @@ impl Default for State {
         Self {
             objects: GenMap::with_capacity(1000),
             clear_color: BLACK,
+            startup: Instant::now(),
+            prev_mouse_pos: mouse_position(),
+            logfile: std::fs::File::create("./log.txt").expect("can't create \"./log.txt\" log file!"),
         }
     }
 }
@@ -353,7 +359,7 @@ impl Algo {
         let node_A2 = BeachNode::make_arc(Some(ind_BA), leaf_A2);
         self.beachline.graph.add_node(node_A2);
 
-        let mut add_edge = |a,b| { self.beachline.graph.add_edge(node_index(a), node_index(b), ()); };
+        let mut add_edge = |a,b| { self.beachline.graph.add_edge(node_index(a), node_index(b), DummyEdgeWeight); };
         add_edge(ind_AB, ind_A1);
         add_edge(ind_AB, ind_BA);
         add_edge(ind_BA, ind_B);
@@ -364,7 +370,7 @@ impl Algo {
                                             .map(|edge| edge.id()).collect::<Vec<_>>() {
                 self.beachline.graph.remove_edge(edge);
             }
-            self.beachline.graph.add_edge(node_index(parent_ind), node_index(ind_AB), ());
+            self.beachline.graph.add_edge(node_index(parent_ind), node_index(ind_AB), DummyEdgeWeight);
             let parent_node = &mut self.beachline.graph[node_index(parent_ind)];
             if parent_node.right.is_some() && parent_node.right.unwrap() == arc {
                 parent_node.right = Some(ind_AB);
@@ -395,128 +401,307 @@ impl Algo {
     }
 }
 
+impl Draw for Algo {
+    fn draw(&self) {
+        let graph_it = self.beachline.graph.node_references();
+        for (node_idx,node) in graph_it {
+            if let BeachItem::Arc(ref arc) = node.item {
+                let focus = arc.site;
+                let l_bp_idx = self.beachline.predecessor(node_idx.index());
+                //let l_bp_idx = node.left;
+                let left_pt = match l_bp_idx {
+                    Some(idx) => {
+                        let l_bp_item = &self.beachline.graph[node_index(idx)].item;
+                        match l_bp_item {
+                            BeachItem::Breakpoint(l_bp) => Some(l_bp.right),
+                            _ => { panic!("arc predecessor is not breakpoint!"); }
+                    }
+                    },
+                    None => None,
+                };
+
+                //let r_bp_idx = node.right.map(|r| self.beachline.graph[node_index(r)]);
+                //let r_bp_idx = node.right;
+                let r_bp_idx = self.beachline.successor(node_idx.index());
+                let right_pt = match r_bp_idx {
+                    Some(idx) => {
+                        let r_bp_item = &self.beachline.graph[node_index(idx)].item;
+                        match r_bp_item {
+                            BeachItem::Breakpoint(r_bp) => Some(r_bp.left),
+                            _ => { panic!("arc successor is not breakpoint!"); }
+                    }
+                    },
+                    None => None,
+                };
+
+                // draw spline
+                match (left_pt, right_pt) {
+                    (Some(l), Some(r)) => {
+                        const V_COUNT: usize = 10;
+                        let calc_v = |v: f64| {
+                            let lm = l.lerp(&focus, v);
+                            let mr = focus.lerp(&r, v);
+                            lm.lerp(&mr, v)
+                        };
+                        for x in 0..(V_COUNT-1) {
+                            let v0 = (x as f64)/(V_COUNT as f64);
+                            let v1 = ((x+1) as f64)/(V_COUNT as f64);
+                            let a = calc_v(v0); let b = calc_v(v1);
+                            draw_line(a.x() as f32, a.y() as f32, b.x() as f32, b.y() as f32, 1.0, WHITE);
+                        }
+                    },
+                    _ => (),
+                }
+            }
+        }
+    }
+
+    fn vertices(&self) -> Vec<Vertex> {
+        todo!()
+    }
+}
+
 #[macroquad::main("Voronoi")]
 async fn main() {
     const WIDTH: f32 = 1800.0;
     const HEIGHT: f32 = 1000.0;
     request_new_screen_size(WIDTH, HEIGHT);
-    let mut state: State = Default::default();
-    let startup = Instant::now();
-    let mut prev_mouse_pos = mouse_position();
+    let state = std::rc::Rc::new(std::sync::RwLock::new(State::default()));
 
+    #[cfg(debug_assertions)]
+    {
     stderrlog::new()
         .module(module_path!())
         .verbosity(log::LevelFilter::Trace)
         .init().unwrap();
     log::log!(log::Level::Error, "aaaaarhg");
     log::info!("up and running");
+    }
     
-    let mut logfile = std::fs::File::create("./log.txt").expect("can't create \"./log.txt\" log file!");
-    const CIRCLE_RADIUS: f32 = 4.0;
+    const CIRCLE_RADIUS: f32 = 1.0;
 
     let bounds = (0.0..WIDTH, 0.0..HEIGHT);
     let random_float_points = utils::random_points(1000, bounds.clone());
 
-    for p in &random_float_points {
-        state.add_circle(geom::Circle {
-            center: Vertex::new(p.x, p.y,
-                                Some(utils::random_color())),
-            radius: CIRCLE_RADIUS,
-        });
+    {
+        let mut state = state.write().unwrap();
+        for p in &random_float_points {
+            state.add_circle(geom::Circle {
+                center: Vertex::new(p.x, p.y,
+                                    Some(utils::random_color())),
+                radius: CIRCLE_RADIUS,
+            });
+        }
     }
+        
+    let mut instant_voronoi = move |state: std::rc::Rc<std::sync::RwLock<State>>| async move {
+        let mut state = state.write().unwrap();
+        let mut voronoi_state = Algo::new(&vec![]);
+        let mut voronoi_calc = |state: &State| {
+            let mut input_verts = state.all_elements().map(|(_,elem)| {
+                let center = elem.compute_aabb().center();
+                Point::new(center.x as f64, center.y as f64)
+            }).collect();
+            voronoi_state = Algo::new(&input_verts);
+            while voronoi_state.process_next_event() {};
 
-    let mut voronoi_state = Algo::new(&vec![]);
-    let mut voronoi_calc = |state: &State| {
-        let mut input_verts = state.all_elements().map(|(_,elem)| {
-            let center = elem.compute_aabb().center();
-            Point::new(center.x as f64, center.y as f64)
-        }).collect();
-        voronoi_state = Algo::new(&input_verts);
-        while voronoi_state.process_next_event() {};
+            let mut interim_dcel = voronoi_state.output.clone();
+            add_bounding_box(WIDTH.max(HEIGHT).into(), &voronoi_state.beachline, &mut interim_dcel);
+            dcel::add_faces(&mut interim_dcel);
 
-        let mut interim_dcel = voronoi_state.output.clone();
-        add_bounding_box(WIDTH.max(HEIGHT).into(), &voronoi_state.beachline, &mut interim_dcel);
-        dcel::add_faces(&mut interim_dcel);
+            let poly = dcel_to_wire_poly(&interim_dcel);
 
-        let poly = dcel_to_wire_poly(&interim_dcel);
+            // let delauney = {
+            //     // all the vertices are the same as the input to the voronoi algo
+            //     // we only need the voronoi result to know which edges to create
+            //     let mut poly = Polygon {
+            //         verts: input_verts.iter().map(|v| Vertex::new(v.x() as f32, v.y() as f32, Some(utils::random_color()))).collect(),
+            //         ..Default::default()
+            //     };
+            //     //for 
+            // }
+            poly
+        };
 
-        // let delauney = {
-        //     // all the vertices are the same as the input to the voronoi algo
-        //     // we only need the voronoi result to know which edges to create
-        //     let mut poly = Polygon {
-        //         verts: input_verts.iter().map(|v| Vertex::new(v.x() as f32, v.y() as f32, Some(utils::random_color()))).collect(),
-        //         ..Default::default()
-        //     };
-        //     //for 
-        // }
-        poly
+        let mut voronoi_poly = voronoi_calc(&state);
+
+        loop {
+            let tick_time = {
+                let t = Instant::now().duration_since(state.startup);
+                (t.as_secs(), t.subsec_nanos())
+            };
+
+            let mut log_line = |state: &mut State, tag: LogTag, msg: &str| {
+                writeln!(&mut state.logfile, "({tag:?}) [{}s{}ns]: {msg}", tick_time.0, tick_time.1).expect("couldn't write log line")
+            };
+
+            log_line(&mut state, LogTag::FrameTime, &format!("{} / {}", get_frame_time(), get_fps()));
+
+            if is_quit_requested() { break }
+            clear_background(state.clear_color);
+
+            for handle in state.objects.iter() {
+                let object = state.objects.get(handle).unwrap();
+                object.draw();
+            }
+
+            voronoi_poly.draw();
+
+            { // Mouse handling
+                let mouse_pos = mouse_position();
+                if mouse_pos != state.prev_mouse_pos {
+                    log_line(&mut state, LogTag::Mouse, &format!("pos {},{}", mouse_pos.0, mouse_pos.1));
+                    state.prev_mouse_pos = mouse_pos;
+                }
+
+                if is_mouse_button_pressed(MouseButton::Left) || is_mouse_button_pressed(MouseButton::Right) {
+                    log_line(&mut state, LogTag::Mouse, &format!("clicked {},{}", mouse_pos.0, mouse_pos.1));
+
+                    let mut hit_elem = None;
+                    let delete = is_mouse_button_pressed(MouseButton::Right);
+                    for (handle,element) in state.all_elements() {
+                        if element.contains_point(&Vector2D::new(mouse_pos.0, mouse_pos.1)) {
+                            hit_elem = Some(handle);
+                            break;
+                        }
+                    }
+                    if let Some(elem) = hit_elem {
+                            log_line(&mut state, LogTag::Select, &format!("selected {:?}", elem));
+                        if delete {
+                            state.objects.remove(elem);
+                        }
+                    } else {
+                        state.add_circle(geom::Circle {
+                            center: Vertex::new(mouse_pos.0, mouse_pos.1, Some(utils::random_color())),
+                            radius: CIRCLE_RADIUS,
+                        });
+                    }
+
+                    voronoi_poly = voronoi_calc(&state);
+                }
+            }
+
+            draw_text("IT WORKS!", 20.0, 20.0, 30.0, DARKGRAY);
+
+            if is_key_released(KeyCode::R) {
+                println!("{}", state.text_digest())
+            }
+            next_frame().await
+        }
+    };
+    let interactive_voronoi = move |state: std::rc::Rc<std::sync::RwLock<State>>| async move {
+        let mut state = state.write().unwrap();
+        let voronoi_reset = |state: &State| {
+            let input_verts = state.all_elements().map(|(_,elem)| {
+                let center = elem.compute_aabb().center();
+                Point::new(center.x as f64, center.y as f64)
+            }).collect();
+            Algo::new(&input_verts)
+        };
+
+        let mut voronoi_state = voronoi_reset(&state);
+
+        let voronoi_step = |voronoi_state: &mut Algo| {
+            voronoi_state.process_next_event();
+            let mut interim_dcel = voronoi_state.output.clone();
+            add_bounding_box(WIDTH.max(HEIGHT).into(), &voronoi_state.beachline, &mut interim_dcel);
+            dcel::add_faces(&mut interim_dcel);
+
+            let poly = dcel_to_wire_poly(&interim_dcel);
+            poly
+        };
+
+        let mut voronoi_poly = Polygon::default();
+
+        loop {
+            let tick_time = {
+                let t = Instant::now().duration_since(state.startup);
+                (t.as_secs(), t.subsec_nanos())
+            };
+
+            let log_line = |state: &mut State, tag: LogTag, msg: &str| {
+                writeln!(&mut state.logfile, "({tag:?}) [{}s{}ns]: {msg}", tick_time.0, tick_time.1).expect("couldn't write log line")
+            };
+
+            log_line(&mut state, LogTag::FrameTime, &format!("{} / {}", get_frame_time(), get_fps()));
+
+            if is_quit_requested() { break }
+            clear_background(state.clear_color);
+
+            for handle in state.objects.iter() {
+                let object = state.objects.get(handle).unwrap();
+                object.draw();
+            }
+
+
+            if is_key_released(KeyCode::S) {
+                voronoi_poly = voronoi_step(&mut voronoi_state);
+            }
+
+            if is_key_released(KeyCode::R) {
+                voronoi_state = voronoi_reset(&state);
+            }
+
+            if is_key_released(KeyCode::G) {
+                use petgraph::{ dot::Dot };
+                
+                let dot = Dot::with_config(
+                    &voronoi_state.beachline.graph,
+                    &[petgraph::dot::Config::EdgeNoLabel],        
+                );
+                let mut file = std::fs::File::create("beachline.dot")
+                    .expect("couldn't create file!");
+                write!(file, "{}", dot).unwrap();
+            }
+            
+            voronoi_poly.draw();
+            voronoi_state.draw();
+
+            { // Mouse handling
+                let mouse_pos = mouse_position();
+                if mouse_pos != state.prev_mouse_pos {
+                    log_line(&mut state, LogTag::Mouse, &format!("pos {},{}", mouse_pos.0, mouse_pos.1));
+                    state.prev_mouse_pos = mouse_pos;
+                }
+
+                if is_mouse_button_pressed(MouseButton::Left) || is_mouse_button_pressed(MouseButton::Right) {
+                    log_line(&mut state, LogTag::Mouse, &format!("clicked {},{}", mouse_pos.0, mouse_pos.1));
+
+                    let mut hit_elem = None;
+                    let delete = is_mouse_button_pressed(MouseButton::Right);
+                    for (handle,element) in state.all_elements() {
+                        if element.contains_point(&Vector2D::new(mouse_pos.0, mouse_pos.1)) {
+                            hit_elem = Some(handle);
+                            break;
+                        }
+                    }
+                    if let Some(elem) = hit_elem {
+                        log_line(&mut state, LogTag::Select, &format!("selected {:?}", elem));
+                        if delete {
+                            state.objects.remove(elem);
+                            voronoi_state = voronoi_reset(&state);
+                        }
+                    } else {
+                        state.add_circle(geom::Circle {
+                            center: Vertex::new(mouse_pos.0, mouse_pos.1, Some(utils::random_color())),
+                            radius: CIRCLE_RADIUS,
+                        });
+                        voronoi_state = voronoi_reset(&state);
+                    }
+                }
+            }
+
+            draw_text("IT WORKS!", 20.0, 20.0, 30.0, DARKGRAY);
+
+            if is_key_released(KeyCode::R) {
+                println!("{}", state.text_digest())
+            }
+            next_frame().await
+        }
     };
 
-    let mut voronoi_poly = voronoi_calc(&state);
-
-    loop {
-        let tick_time = {
-            let t = Instant::now().duration_since(startup);
-            (t.as_secs(), t.subsec_nanos())
-        };
-
-        let mut log_line = |tag: LogTag, msg: &str| {
-            writeln!(&mut logfile, "({tag:?}) [{}s{}ns]: {msg}", tick_time.0, tick_time.1).expect("couldn't write log line")
-        };
-
-        log_line(LogTag::FrameTime, &format!("{} / {}", get_frame_time(), get_fps()));
-
-        if is_quit_requested() { break }
-        clear_background(state.clear_color);
-
-        for handle in state.objects.iter() {
-            let object = state.objects.get(handle).unwrap();
-            object.draw();
-        }
-
-        voronoi_poly.draw();
-
-        { // Mouse handling
-            let mouse_pos = mouse_position();
-            if mouse_pos != prev_mouse_pos {
-                log_line(LogTag::Mouse, &format!("pos {},{}", mouse_pos.0, mouse_pos.1));
-                prev_mouse_pos = mouse_pos;
-            }
-
-            if is_mouse_button_pressed(MouseButton::Left) || is_mouse_button_pressed(MouseButton::Right) {
-                log_line(LogTag::Mouse, &format!("clicked {},{}", mouse_pos.0, mouse_pos.1));
-
-                let mut hit_elem = None;
-                let delete = is_mouse_button_pressed(MouseButton::Right);
-                for (handle,element) in state.all_elements() {
-                    if element.contains_point(&Vector2D::new(mouse_pos.0, mouse_pos.1)) {
-                        log_line(LogTag::Select, &format!("selected {:?}", element));
-                        hit_elem = Some(handle);
-                        break;
-                    }
-                }
-                if let Some(elem) = hit_elem {
-                    if delete {
-                        state.objects.remove(elem);
-                    }
-                } else {
-                    state.add_circle(geom::Circle {
-                        center: Vertex::new(mouse_pos.0, mouse_pos.1, Some(utils::random_color())),
-                        radius: CIRCLE_RADIUS,
-                    });
-                }
-
-                voronoi_poly = voronoi_calc(&state);
-            }
-        }
-
-        draw_text("IT WORKS!", 20.0, 20.0, 30.0, DARKGRAY);
-
-        if is_key_released(KeyCode::R) {
-            println!("{}", state.text_digest())
-        }
-        next_frame().await
-    }
+    //instant_voronoi(state.clone()).await
+    interactive_voronoi(state.clone()).await
 }
 
 pub fn dcel_to_wire_poly(source: &dcel::DCEL) -> Polygon {

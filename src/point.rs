@@ -3,6 +3,7 @@ use std::ops::{Sub, Mul, Add};
 use std::fmt;
 use ordered_float::OrderedFloat;
 use std::cmp::Ordering;
+use macroquad::math::FloatExt;
 
 /// A point in two dimensions
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -27,6 +28,13 @@ impl Point {
     /// Maybe implement rand::Fill?
     pub fn rand() -> Self {
         Point::new(random::<f64>(), random::<f64>())
+    }
+
+    pub fn lerp(&self, other: &Self, v: f64) -> Self {
+        Self::new(
+            self.x().lerp(other.x(), v),
+            self.y().lerp(other.y(), v),
+        )
     }
 }
 

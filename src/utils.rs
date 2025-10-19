@@ -1,6 +1,7 @@
 use macroquad::prelude::*;
 use euclid::default::Vector2D;
 use std::ops::Range;
+use crate::geom::{self, Polygon};
 
 pub fn random_color() -> macroquad::color::Color {
     use random_color::RandomColor;

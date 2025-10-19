@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+chrono = "0.4.42"
 euclid = { version = "0.22.11", features = ["serde", "libm"] }
 fnv = "1.0.7"
 genmap = "1.0.3"
@@ -25,3 +26,7 @@ path = "src/bin/voronoi/voronoi.rs"
 [[bin]]
 name = "hello-world"
 path = "src/bin/main.rs"
+
+[[bin]]
+name = "convex-hull"
+path = "src/bin/convex-hull/convex-hull.rs"
