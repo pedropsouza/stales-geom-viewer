@@ -34,3 +34,7 @@ path = "src/bin/convex-hull/convex-hull.rs"
 [[bin]]
 name = "discrete-grid"
 path = "src/bin/discrete-grid/discrete-grid.rs"
+
+#[[bin]]
+#name = "minkowski"
+#path = "src/bin/minkowski/minkowski.rs"
