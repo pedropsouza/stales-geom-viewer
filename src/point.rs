@@ -1,5 +1,5 @@
 use rand::random;
-use std::ops::{Sub, Mul, Add};
+use std::ops::{Add, Div, Mul, Sub};
 use std::fmt;
 use ordered_float::OrderedFloat;
 use std::cmp::Ordering;
@@ -35,6 +35,20 @@ impl Point {
             self.x().lerp(other.x(), v),
             self.y().lerp(other.y(), v),
         )
+    }
+
+    pub fn magnitude(&self) -> f64 {
+        (self.0.x.powi(2) + self.0.y.powi(2)).sqrt()
+    }
+}
+
+impl Div<f64> for Point {
+    type Output = Self;
+
+    fn div(mut self, rhs: f64) -> Self::Output {
+        self.0.x /= rhs;
+        self.0.y /= rhs;
+        self
     }
 }
 

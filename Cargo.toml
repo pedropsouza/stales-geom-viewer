@@ -30,3 +30,7 @@ path = "src/bin/main.rs"
 [[bin]]
 name = "convex-hull"
 path = "src/bin/convex-hull/convex-hull.rs"
+
+[[bin]]
+name = "discrete-grid"
+path = "src/bin/discrete-grid/discrete-grid.rs"
