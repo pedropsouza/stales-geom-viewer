@@ -14,6 +14,13 @@ use std::{
     cmp::{Ord, Ordering}, collections::HashMap, default::Default, fmt::Debug, fs::File, io::Write, iter::{self, Iterator}, time::Instant
 };
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum DrawingState {
+    Ground,
+    Drawing,
+    Erasing,
+}
+
 #[derive(Debug)]
 struct Grid {
     pub topleft: Point,
@@ -27,17 +34,17 @@ struct Grid {
 
 impl Grid {
     pub fn new(topleft: Point, botright: Point, clr: Color, size: (usize, usize)) -> Self {
-        let mut verts = Vec::with_capacity(size.0*2 + size.1*2);
+        let mut verts = Vec::with_capacity(size.0*2 + size.1*2 + 2);
         let deltas = (botright.x() - topleft.x(), botright.y() - topleft.y());
         let strides = (deltas.0/(size.0 as f64), deltas.1/(size.1 as f64));
-        for i in 0..size.0 {
+        for i in 0..(size.0 + 1) {
             let x = topleft.x() + (i as f64) * strides.0;
             let y1 = topleft.y();
             let y2 = botright.y();
             verts.push(Point::new(x,y1));
             verts.push(Point::new(x,y2));
         }
-        for i in 0..size.1 {
+        for i in 0..(size.1 + 1) {
             let y = topleft.y() + (i as f64) * strides.1;
             let x1 = topleft.x();
             let x2 = botright.x();
@@ -53,8 +60,8 @@ impl Grid {
     }
 
     pub fn quantize_xy(&self, x: f64, y: f64) -> Option<(usize, usize)> {
-        let xu = x - self.topleft.x();
-        let yu = y - self.topleft.y();
+        let xu = x;
+        let yu = y;
 
         if xu < 0.0 || yu < 0.0 { return None; }
         
@@ -66,10 +73,12 @@ impl Grid {
     }
 
     pub fn xy_idx(&self, x: f64, y: f64) -> Option<usize> {
-        let quantized = self.quantize_xy(x,y);
+        let relx = x - self.topleft.x();
+        let rely = y - self.topleft.y();
+        let quantized = self.quantize_xy(relx,rely);
         quantized.and_then(|(xi,yi)| {
-            if xi > self.size.0
-            || yi > self.size.1
+            if xi >= self.size.0
+            || yi >= self.size.1
             { return None; }
 
             Some(xi + yi*self.size.0)
@@ -79,9 +88,9 @@ impl Grid {
     pub fn idx_xy(&self, idx: usize) -> Option<(f64,f64)> {
         if idx < self.array.len() {
             Some((
-                (idx as f64 % self.size.0 as f64) * self.strides.0,
-                (idx as f64 / self.size.0 as f64) * self.strides.1)
-            )
+                (idx as f64 % self.size.0 as f64) * self.strides.0 + self.topleft.x(),
+                (idx as f64 / self.size.0 as f64) * self.strides.1 + self.topleft.y()
+            ))
         } else { None }
     }
     pub fn probe_xy(&self, x: f64, y: f64) -> Option<bool> {
@@ -93,9 +102,11 @@ impl Grid {
     }
 
     pub fn xy_box(&self, x: f64, y: f64) -> Option<(Point, Point)> {
-        let quantized = self.quantize_xy(x,y);
+        let relx = x - self.topleft.x();
+        let rely = y - self.topleft.y();
+        let quantized = self.quantize_xy(relx,rely);
         quantized.and_then(|(xi,yi)| {
-            if xi > self.size.0 || yi > self.size.1 {
+            if xi >= self.size.0 || yi >= self.size.1 {
                 return None;
             }
             Some((
@@ -192,13 +203,13 @@ struct State {
     pub logfile: std::fs::File,
 
     pub grids: Vec<genmap::Handle>,
+    pub drawing_state: DrawingState,
 }
 
 impl Default for State {
     fn default() -> Self {
         use chrono;
         let mut objects = GenMap::<Object>::with_capacity(1000);
-        let chph = objects.insert(Object::PolyObj(Polygon::default()));
         let cur_time = chrono::Local::now();
         let log_name = format!("./log-{}-{}-{}.txt", cur_time.hour(), cur_time.minute(), cur_time.second());
         Self {
@@ -208,6 +219,7 @@ impl Default for State {
             prev_mouse_pos: mouse_position(),
             logfile: std::fs::File::create(log_name).expect("can't create \"./log.txt\" log file!"),
             grids: vec![],
+            drawing_state: DrawingState::Ground,
         }
     }
 }
@@ -290,8 +302,8 @@ async fn main() {
         let mut state = state.write().unwrap();
         let grid = state.objects.insert(Object::GridObj(
             Grid::new(
-                Point::new(0.0,0.0),
-                Point::new(WIDTH as f64, HEIGHT as f64),
+                Point::new(WIDTH as f64/8.0, HEIGHT as f64/8.0),
+                Point::new(WIDTH as f64 * 7.0/8.0, HEIGHT as f64 * 7.0/8.0),
                 WHITE,
                 (30, 30)
             )));
@@ -334,34 +346,40 @@ async fn main() {
                 state.prev_mouse_pos = mouse_pos;
             }
 
-            if is_mouse_button_pressed(MouseButton::Left) || is_mouse_button_pressed(MouseButton::Right) {
+            state.drawing_state
+                = match (is_mouse_button_down(MouseButton::Left),
+                         is_mouse_button_down(MouseButton::Right))
+            {
+                (true, _) => DrawingState::Drawing,
+                (_, true) => DrawingState::Erasing,
+                (false, false) => DrawingState::Ground,
+            };
+
+            if state.drawing_state != DrawingState::Ground {
                 log_line(&mut state, LogTag::Mouse, &format!("clicked {},{}", mouse_pos.0, mouse_pos.1));
 
                 let mut hit_elem = None;
-                let delete = is_mouse_button_pressed(MouseButton::Right);
                 for (handle,element) in state.all_elements() {
                     if element.contains_point(&Vector2D::new(mouse_pos.0, mouse_pos.1)) {
                         hit_elem = Some(handle);
                         break;
                     }
                 }
+                
                 if let Some(elem) = hit_elem {
                     log_line(&mut state, LogTag::Select, &format!("selected {:?}", elem));
 
                     let grid_handle = state.grids.iter().find(|x| **x == elem).cloned();
                     if let Some(grid_handle) = grid_handle {
+                        let dstate = state.drawing_state;
                         let grid = state.objects.get_mut(grid_handle);
                         if let Some(Object::GridObj(ref mut grid)) = grid {
                             match grid.xy_idx(mouse_pos.0 as f64, mouse_pos.1 as f64) {
-                                Some(idx) => grid.array[idx] ^= true,
+                                Some(idx) => grid.array[idx] = dstate == DrawingState::Drawing,
                                 None => (),
                             }
                         }
                         else { unreachable!(); }
-                    }
-                    
-                    if delete {
-                        // nothing
                     }
                 } else {
                     // nothing
