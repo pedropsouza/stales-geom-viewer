@@ -192,7 +192,7 @@ async fn main() {
                 Point::new(WIDTH as f64/8.0, HEIGHT as f64/8.0),
                 Point::new(WIDTH as f64 * 7.0/8.0, HEIGHT as f64 * 7.0/8.0),
                 WHITE,
-                (8, 8)
+                (30, 30)
             )));
         state.grids.push(grid);
     }
@@ -201,7 +201,7 @@ async fn main() {
         let mut state = state.write().unwrap();
         if let Object::GridObj(grid) = state.objects.get(state.grids[0]).unwrap() {
             let mut bots = vec![];
-            for _ in 0..4 {
+            for _ in 0..50 {
                 bots.push(Bot::random_inside(grid));
             }
             for bot in bots {
@@ -218,9 +218,6 @@ async fn main() {
         let after = Instant::now();
 
         // let d = after - before;
-        // let point_count = state.sorted_pts.len();
-        // log_line(&mut state, &std::time::Duration::from_secs(0), LogTag::Timing,
-                 // &format!("recalc_convex_hull took {}s{}ns for {} points", d.as_secs(), d.subsec_nanos(), point_count));
     }
         
     loop {
@@ -326,31 +323,44 @@ async fn main() {
                         recalc = true;
                     }
 
-                    if let Some(sel_cell) = state.sel_cell {
-                        if let Object::GridObj(grid) = state.objects.get(state.grids[0]).unwrap() {
-                            for i in 0..grid.array.len() {
-                                let dist = grid.chebyshev_distance(sel_cell, i);
-                                let pos = grid.idx_xy(i).unwrap();
-                                let pos = (pos.0 as f32, pos.1 as f32);
-                                draw_text(&dist.to_string(), pos.0, pos.1, 24.0, WHITE);
-                                let pos = (pos.0 + grid.cell_dims().0 as f32/2.0, pos.1 + grid.cell_dims().1 as f32/2.0);
-                                draw_circle(pos.0, pos.1, 2.0, WHITE);
-                            }
-                        } else {
-                            unreachable!();
-                        }
-                    }
+                    // if let Some(sel_cell) = state.sel_cell {
+                    //     if let Object::GridObj(grid) = state.objects.get(state.grids[0]).unwrap() {
+                    //         for i in 0..grid.array.len() {
+                    //             let dist = grid.chebyshev_distance(sel_cell, i);
+                    //             let pos = grid.idx_xy(i).unwrap();
+                    //             let pos = (pos.0 as f32, pos.1 as f32);
+                    //             draw_text(&dist.to_string(), pos.0, pos.1, 24.0, WHITE);
+                    //             let pos = (pos.0 + grid.cell_dims().0 as f32/2.0, pos.1 + grid.cell_dims().1 as f32/2.0);
+                    //             draw_circle(pos.0, pos.1, 2.0, WHITE);
+                    //         }
+                    //     } else {
+                    //         unreachable!();
+                    //     }
+                    // }
 
                     if recalc {
+                        let before = Instant::now();
+
+                        let mut cell_count = 0;
+                        let mut bot_count = 0;
                         let grid_handle = state.grids[0];
-                        for bot in state.bots.clone() {
-                            let objects = &mut state.objects;
-                            if let Object::BotObj(bot) = objects.get(bot).unwrap() {
-                                if let Object::GridObj(grid) = objects.get(grid_handle).unwrap() {
+                        let bots = state.bots.clone();
+                        if let Object::GridObj(grid) = state.objects.get(grid_handle).unwrap() {
+                            bot_count = bots.len();
+                            cell_count = grid.size().0 * grid.size().1;
+                            for bot in bots {
+                                if let Object::BotObj(bot) = state.objects.get(bot).unwrap() {
                                     bot.borrow_mut().recalc_path(grid);
                                 }
                             }
                         }
+
+                        let after = Instant::now();
+                        let d = after - before;
+                        log_line(&mut state, LogTag::Timing,
+                                 &format!("recalculating the bot paths took {}s{}ns for {bot_count} bots on a grid with {cell_count}",
+                                          d.as_secs(), d.subsec_nanos()));
+
                     }
                 },
                 InputMode::Bots(ref mut origin_opt) => {
