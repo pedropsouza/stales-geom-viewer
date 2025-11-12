@@ -1,18 +1,29 @@
 use chrono::Timelike;
-use macroquad::{miniquad::native::linux_x11::libx11::Display, prelude::*};
+use macroquad::prelude::*;
 use genmap::GenMap;
 
 use stales_geom_viewer::{
-    utils,
     common_traits::*,
-    geom::{self, *, Vertex},
+    geom::{self, *},
     point::Point,
 };
 use euclid::default::Vector2D;
 
 use std::{
-    cmp::{Ord, Ordering}, collections::HashMap, default::Default, fmt::Debug, fs::File, io::Write, iter::{self, Iterator}, time::Instant
+    cmp::{Ord, Ordering},
+    collections::HashMap,
+    default::Default,
+    fmt::Debug,
+    fs::File, io::Write,
+    iter::{self, Iterator},
+    time::Instant,
+    cell::RefCell,
 };
+
+mod bot;
+mod grid;
+use bot::Bot;
+use grid::Grid;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum DrawingState {
@@ -21,157 +32,16 @@ enum DrawingState {
     Erasing,
 }
 
-#[derive(Debug)]
-struct Grid {
-    pub topleft: Point,
-    pub botright: Point,
-    pub array: Vec<bool>,
-    size: (usize, usize),
-    strides: (f64, f64),
-    verts: Vec<Vertex>,
-    clr: Color,
-}
-
-impl Grid {
-    pub fn new(topleft: Point, botright: Point, clr: Color, size: (usize, usize)) -> Self {
-        let mut verts = Vec::with_capacity(size.0*2 + size.1*2 + 2);
-        let deltas = (botright.x() - topleft.x(), botright.y() - topleft.y());
-        let strides = (deltas.0/(size.0 as f64), deltas.1/(size.1 as f64));
-        for i in 0..(size.0 + 1) {
-            let x = topleft.x() + (i as f64) * strides.0;
-            let y1 = topleft.y();
-            let y2 = botright.y();
-            verts.push(Point::new(x,y1));
-            verts.push(Point::new(x,y2));
-        }
-        for i in 0..(size.1 + 1) {
-            let y = topleft.y() + (i as f64) * strides.1;
-            let x1 = topleft.x();
-            let x2 = botright.x();
-            verts.push(Point::new(x1,y));
-            verts.push(Point::new(x2,y));
-        }
-
-        Self {
-            topleft, botright, clr, size, strides,
-            verts: verts.into_iter().map(|p| Vertex::new(p.x() as f32, p.y() as f32, None)).collect(),
-            array: [false].into_iter().cycle().take(size.0*size.1).collect(),
-        }
-    }
-
-    pub fn quantize_xy(&self, x: f64, y: f64) -> Option<(usize, usize)> {
-        let xu = x;
-        let yu = y;
-
-        if xu < 0.0 || yu < 0.0 { return None; }
-        
-        let xi = (xu / self.strides.0) as usize;
-        let yi = (yu / self.strides.1) as usize;
-
-        println!("{x}x{y} quantizes to {xi}x{yi}");
-        Some((xi, yi))
-    }
-
-    pub fn xy_idx(&self, x: f64, y: f64) -> Option<usize> {
-        let relx = x - self.topleft.x();
-        let rely = y - self.topleft.y();
-        let quantized = self.quantize_xy(relx,rely);
-        quantized.and_then(|(xi,yi)| {
-            if xi >= self.size.0
-            || yi >= self.size.1
-            { return None; }
-
-            Some(xi + yi*self.size.0)
-        })
-    }
-
-    pub fn idx_xy(&self, idx: usize) -> Option<(f64,f64)> {
-        if idx < self.array.len() {
-            Some((
-                (idx as f64 % self.size.0 as f64) * self.strides.0 + self.topleft.x(),
-                (idx as f64 / self.size.0 as f64) * self.strides.1 + self.topleft.y()
-            ))
-        } else { None }
-    }
-    pub fn probe_xy(&self, x: f64, y: f64) -> Option<bool> {
-        self.xy_idx(x,y).map(|idx| self.array[idx])
-    }
-
-    pub fn idx_box(&self, idx: usize) -> Option<(Point, Point)> {
-        self.idx_xy(idx).and_then(|(x,y)| self.xy_box(x,y))
-    }
-
-    pub fn xy_box(&self, x: f64, y: f64) -> Option<(Point, Point)> {
-        let relx = x - self.topleft.x();
-        let rely = y - self.topleft.y();
-        let quantized = self.quantize_xy(relx,rely);
-        quantized.and_then(|(xi,yi)| {
-            if xi >= self.size.0 || yi >= self.size.1 {
-                return None;
-            }
-            Some((
-                Point::new((xi as f64)*self.strides.0 + self.topleft.x(), (yi as f64)*self.strides.1 + self.topleft.y()),
-                Point::new(((xi + 1) as f64)*self.strides.0 + self.topleft.x(), ((yi + 1) as f64)*self.strides.1 + self.topleft.y()),
-            ))
-        })
-    }
-}
-
-impl Draw for Grid {
-    fn draw(&self) {
-        for vs in self.verts.chunks(2) {
-            draw_line(vs[0].pos.x, vs[0].pos.y,
-                      vs[1].pos.x, vs[1].pos.y,
-                      1.0, self.clr);
-        }
-
-        for (idx, _) in self.array.iter().enumerate().filter(|(_,x)| **x) {
-            if let Some((topl,botr)) = self.idx_box(idx) {
-                let s = botr - topl;
-                let (w,h) = (s.x() as f32, s.y() as f32);
-                draw_rectangle(topl.x() as f32, topl.y() as f32, w, h, self.clr);
-            }
-        }
-    }
-
-    fn vertices(&self) -> Vec<Vertex> {
-        self.verts.clone()
-    }
-}
-
-impl Select for Grid {
-    fn compute_aabb(&self) -> euclid::default::Box2D<f32> {
-        euclid::default::Box2D::new(
-            euclid::default::Point2D::new(self.topleft.x() as f32, self.topleft.y() as f32),
-            euclid::default::Point2D::new(self.botright.x() as f32, self.botright.y() as f32),
-            )
-    }
-
-    fn sample_signed_distance_field(&self, global_sample_point: &Vector2D<f32>) -> f32 {
-        // Rectangle SDF from iq (of course)
-        // float sdBox( in vec2 p, in vec2 b )
-        // {
-        //     vec2 d = abs(p)-b;
-        //     return length(max(d,0.0)) + min(max(d.x,d.y),0.0);
-        // }
-        let midpoint  = (self.topleft + self.botright) / 2.0;
-        let point_rel = Point::new(global_sample_point.x as f64, global_sample_point.y as f64) - midpoint;
-        let halfdelta = (self.botright - self.topleft) / 2.0;
-        let d = Point::new(point_rel.x().abs(), point_rel.y().abs()) - halfdelta;
-        let length = Point::new(d.x().max(0.0), d.y().max(0.0)).magnitude();
-        let dist = (length as f32) + (d.x().max(d.y())).min(0.0) as f32;
-        dist
-    }
-}
-
 type Color = macroquad::color::Color;
 
+#[derive(Debug)]
 enum Object {
     Point(geom::Vertex),
     CircleObj(geom::Circle),
     LineObj(geom::Line2D),
     PolyObj(geom::Polygon),
-    GridObj(Grid)
+    GridObj(Grid),
+    BotObj(RefCell<Bot>),
 }
 
 impl Draw for Object {
@@ -182,6 +52,7 @@ impl Draw for Object {
             Object::LineObj(l) => l.draw(),
             Object::PolyObj(p) => p.draw(),
             Object::GridObj(g) => g.draw(),
+            Object::BotObj(b) => b.borrow().draw(),
         }
     }
     fn vertices(&self) -> Vec<geom::Vertex> {
@@ -191,10 +62,12 @@ impl Draw for Object {
             Object::LineObj(l) => l.vertices(),
             Object::PolyObj(p) => p.vertices(),
             Object::GridObj(g) => g.vertices(),
+            Object::BotObj(b) => b.borrow().vertices(),
         }
     }
 }
 
+#[derive(Debug)]
 struct State {
     pub objects: GenMap<Object>,
     pub clear_color: Color,
@@ -204,12 +77,14 @@ struct State {
 
     pub grids: Vec<genmap::Handle>,
     pub drawing_state: DrawingState,
+    pub sel_cell: Option<usize>,
+    pub bots: Vec<genmap::Handle>,
 }
 
 impl Default for State {
     fn default() -> Self {
         use chrono;
-        let mut objects = GenMap::<Object>::with_capacity(1000);
+        let objects = GenMap::<Object>::with_capacity(1000);
         let cur_time = chrono::Local::now();
         let log_name = format!("./log-{}-{}-{}.txt", cur_time.hour(), cur_time.minute(), cur_time.second());
         Self {
@@ -220,6 +95,8 @@ impl Default for State {
             logfile: std::fs::File::create(log_name).expect("can't create \"./log.txt\" log file!"),
             grids: vec![],
             drawing_state: DrawingState::Ground,
+            sel_cell: None,
+            bots: vec![],
         }
     }
 }
@@ -244,6 +121,7 @@ impl State {
                     Object::LineObj(l) => Some(l as &dyn Element),
                     Object::PolyObj(_p) => None,
                     Object::GridObj(g) => Some(g as &dyn Element),
+                    Object::BotObj(_b) => None, //Some(b.into_inner().clone() as &dyn Element),
                 }).map(|elem| (x, elem))
             })
     }
@@ -258,11 +136,13 @@ impl State {
                              .iter().flat_map(|x| self.objects.get(x))
                                     .map(Draw::vertices).fold(0usize, |acc,verts| acc + verts.len());
         let frametime = get_frame_time();
+        let bots = format!("bots: {:?}", self.bots.iter().map(|b| self.objects.get(*b)).collect::<Vec<_>>());
         format!(r"
 num. of lines: {line_cnt}
 num. of circles: {circle_cnt}
 num. of vertices: {vertex_cnt}
 frametime: {frametime}
+bots: {bots}
 ")
     }
 
@@ -305,9 +185,18 @@ async fn main() {
                 Point::new(WIDTH as f64/8.0, HEIGHT as f64/8.0),
                 Point::new(WIDTH as f64 * 7.0/8.0, HEIGHT as f64 * 7.0/8.0),
                 WHITE,
-                (30, 30)
+                (8, 8)
             )));
         state.grids.push(grid);
+    }
+
+    {
+        let mut state = state.write().unwrap();
+        if let Object::GridObj(grid) = state.objects.get(state.grids[0]).unwrap() {
+            let bot = Bot::new(grid, 0, 8*8-1, RED);
+            let bot_handle = state.objects.insert(Object::BotObj(RefCell::new(bot)));
+            state.bots.push(bot_handle);
+        }
     }
 
     let mut state = state.write().unwrap();
@@ -339,6 +228,7 @@ async fn main() {
             object.draw();
         }
 
+        let mut recalc = false;
         { // Mouse handling
             let mouse_pos = mouse_position();
             if mouse_pos != state.prev_mouse_pos {
@@ -375,14 +265,45 @@ async fn main() {
                         let grid = state.objects.get_mut(grid_handle);
                         if let Some(Object::GridObj(ref mut grid)) = grid {
                             match grid.xy_idx(mouse_pos.0 as f64, mouse_pos.1 as f64) {
-                                Some(idx) => grid.array[idx] = dstate == DrawingState::Drawing,
+                                Some(idx) => {
+                                    grid.array[idx] = dstate == DrawingState::Drawing;
+                                    state.sel_cell = Some(idx);
+                                    recalc = true;
+                                },
                                 None => (),
                             }
                         }
                         else { unreachable!(); }
                     }
                 } else {
-                    // nothing
+                    state.sel_cell = None;
+                }
+            }
+        }
+
+        if let Some(sel_cell) = state.sel_cell {
+            if let Object::GridObj(grid) = state.objects.get(state.grids[0]).unwrap() {
+                for i in 0..grid.array.len() {
+                    let dist = grid.chebyshev_distance(sel_cell, i);
+                    let pos = grid.idx_xy(i).unwrap();
+                    let pos = (pos.0 as f32, pos.1 as f32);
+                    draw_text(&dist.to_string(), pos.0, pos.1, 24.0, WHITE);
+                    let pos = (pos.0 + grid.cell_dims().0 as f32/2.0, pos.1 + grid.cell_dims().1 as f32/2.0);
+                    draw_circle(pos.0, pos.1, 2.0, WHITE);
+                }
+            } else {
+                unreachable!();
+            }
+        }
+
+        if recalc {
+            let grid_handle = state.grids[0];
+            for bot in state.bots.clone() {
+                let objects = &mut state.objects;
+                if let Object::BotObj(bot) = objects.get(bot).unwrap() {
+                    if let Object::GridObj(grid) = objects.get(grid_handle).unwrap() {
+                        bot.borrow_mut().recalc_path(grid);
+                    }
                 }
             }
         }
