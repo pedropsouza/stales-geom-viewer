@@ -1,8 +1,6 @@
+use ::rand::random_range;
 use stales_geom_viewer::{
-    utils,
-    common_traits::*,
-    geom::{self, *, Vertex},
-    point::Point,
+    common_traits::*, geom::{self, Vertex, *}, point::Point, utils::{self, random_color}
 };
 use euclid::default::Vector2D;
 use macroquad::prelude::*;
@@ -31,6 +29,13 @@ impl Bot {
         Self {
             pos, origin_idx, dest_idx, clr, radius: radius as f32, path
         }
+    }
+
+    pub fn random_inside(grid: &Grid) -> Self {
+        let origin_idx = random_range(0..grid.size().0*grid.size().1);
+        let dest_idx = random_range(0..grid.size().0*grid.size().1);
+        let clr = random_color();
+        Self::new(grid, origin_idx, dest_idx, clr)
     }
 
     fn calc_path(grid: &Grid, origin_idx: usize, dest_idx: usize) -> Result<Vec<(usize, (f32,f32))>, String> {
@@ -117,7 +122,7 @@ impl Draw for Bot {
                 let segments = verts.clone().zip(verts.skip(1)).take(verts_len - 1);
                 for (a,b) in segments {
                     draw_line(a.0, a.1, b.0, b.1, 2.0, self.clr);
-                    draw_circle_lines(b.0, b.1, self.radius/4.0, 2.0, self.clr);
+                    //draw_circle_lines(b.0, b.1, self.radius/4.0, 2.0, self.clr);
                 }
             },
             Err(_) => (),

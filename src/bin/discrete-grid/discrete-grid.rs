@@ -5,9 +5,9 @@ use genmap::GenMap;
 use stales_geom_viewer::{
     common_traits::*,
     geom::{self, *},
-    point::Point,
+    point::Point, utils::random_color,
 };
-use euclid::default::Vector2D;
+use euclid::{default::Vector2D, num::Floor};
 
 use std::{
     cmp::{Ord, Ordering},
@@ -67,6 +67,13 @@ impl Draw for Object {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum InputMode {
+    Obstacles(DrawingState),
+    Bots(Option<usize>),
+    Run(i32),
+}
+
 #[derive(Debug)]
 struct State {
     pub objects: GenMap<Object>,
@@ -76,7 +83,7 @@ struct State {
     pub logfile: std::fs::File,
 
     pub grids: Vec<genmap::Handle>,
-    pub drawing_state: DrawingState,
+    pub input_mode: InputMode,
     pub sel_cell: Option<usize>,
     pub bots: Vec<genmap::Handle>,
 }
@@ -94,7 +101,7 @@ impl Default for State {
             prev_mouse_pos: mouse_position(),
             logfile: std::fs::File::create(log_name).expect("can't create \"./log.txt\" log file!"),
             grids: vec![],
-            drawing_state: DrawingState::Ground,
+            input_mode: InputMode::Obstacles(DrawingState::Ground),
             sel_cell: None,
             bots: vec![],
         }
@@ -193,9 +200,14 @@ async fn main() {
     {
         let mut state = state.write().unwrap();
         if let Object::GridObj(grid) = state.objects.get(state.grids[0]).unwrap() {
-            let bot = Bot::new(grid, 0, 8*8-1, RED);
-            let bot_handle = state.objects.insert(Object::BotObj(RefCell::new(bot)));
-            state.bots.push(bot_handle);
+            let mut bots = vec![];
+            for _ in 0..4 {
+                bots.push(Bot::random_inside(grid));
+            }
+            for bot in bots {
+                let bot_handle = state.objects.insert(Object::BotObj(RefCell::new(bot)));
+                state.bots.push(bot_handle);
+            }
         }
     }
 
@@ -236,18 +248,7 @@ async fn main() {
                 state.prev_mouse_pos = mouse_pos;
             }
 
-            state.drawing_state
-                = match (is_mouse_button_down(MouseButton::Left),
-                         is_mouse_button_down(MouseButton::Right))
-            {
-                (true, _) => DrawingState::Drawing,
-                (_, true) => DrawingState::Erasing,
-                (false, false) => DrawingState::Ground,
-            };
-
-            if state.drawing_state != DrawingState::Ground {
-                log_line(&mut state, LogTag::Mouse, &format!("clicked {},{}", mouse_pos.0, mouse_pos.1));
-
+            let grid_interact = |mut state: &mut State, mut grid_func: Box<dyn FnMut(&mut Grid, usize) -> usize>| -> Option<usize> {
                 let mut hit_elem = None;
                 for (handle,element) in state.all_elements() {
                     if element.contains_point(&Vector2D::new(mouse_pos.0, mouse_pos.1)) {
@@ -261,54 +262,140 @@ async fn main() {
 
                     let grid_handle = state.grids.iter().find(|x| **x == elem).cloned();
                     if let Some(grid_handle) = grid_handle {
-                        let dstate = state.drawing_state;
                         let grid = state.objects.get_mut(grid_handle);
                         if let Some(Object::GridObj(ref mut grid)) = grid {
-                            match grid.xy_idx(mouse_pos.0 as f64, mouse_pos.1 as f64) {
-                                Some(idx) => {
-                                    grid.array[idx] = dstate == DrawingState::Drawing;
-                                    state.sel_cell = Some(idx);
-                                    recalc = true;
-                                },
-                                None => (),
+                            return match grid.xy_idx(mouse_pos.0 as f64, mouse_pos.1 as f64) {
+                                Some(idx) => Some(grid_func(grid, idx)),
+                                None => None,
                             }
                         }
                         else { unreachable!(); }
-                    }
+                    } else { None }
                 } else {
-                    state.sel_cell = None;
+                    None
                 }
-            }
-        }
+            };
 
-        if let Some(sel_cell) = state.sel_cell {
-            if let Object::GridObj(grid) = state.objects.get(state.grids[0]).unwrap() {
-                for i in 0..grid.array.len() {
-                    let dist = grid.chebyshev_distance(sel_cell, i);
-                    let pos = grid.idx_xy(i).unwrap();
-                    let pos = (pos.0 as f32, pos.1 as f32);
-                    draw_text(&dist.to_string(), pos.0, pos.1, 24.0, WHITE);
-                    let pos = (pos.0 + grid.cell_dims().0 as f32/2.0, pos.1 + grid.cell_dims().1 as f32/2.0);
-                    draw_circle(pos.0, pos.1, 2.0, WHITE);
-                }
-            } else {
-                unreachable!();
-            }
-        }
+            let obstacle_paint = |grid: &mut Grid, idx: usize| {
+                grid.array[idx] = true;
+                idx
+            };
+            
+            let obstacle_erase = |grid: &mut Grid, idx: usize| {
+                grid.array[idx] = false;
+                idx
+            };
 
-        if recalc {
-            let grid_handle = state.grids[0];
-            for bot in state.bots.clone() {
-                let objects = &mut state.objects;
-                if let Object::BotObj(bot) = objects.get(bot).unwrap() {
-                    if let Object::GridObj(grid) = objects.get(grid_handle).unwrap() {
-                        bot.borrow_mut().recalc_path(grid);
+            let mut cur_mode =
+                match
+                (state.input_mode.clone(),
+                 is_mouse_button_down(MouseButton::Left), is_mouse_button_down(MouseButton::Right),
+                 is_key_down(KeyCode::B), is_key_down(KeyCode::Space)) {
+                    (InputMode::Obstacles(_), left, right, _, _) if left || right =>
+                        InputMode::Obstacles(
+                            if left { DrawingState::Drawing }
+                            else { DrawingState::Erasing }
+                        ),
+                    (_, _, _, true, _) => InputMode::Bots(None),
+                    (_, _, _, _, true) => InputMode::Run(0),
+                    (prev, _,_,_,_) => prev,
+                };
+            let mut bot_creation_info: Option<(usize, usize)> = None;
+            
+            match cur_mode {
+                InputMode::Obstacles(ref mut drawing_state) => {
+                    if !is_mouse_button_down(MouseButton::Left) && !is_mouse_button_down(MouseButton::Right) {
+                        *drawing_state = DrawingState::Ground;
+                        // return could go here, but that skips over important bookkeeping later
                     }
+
+                    if *drawing_state != DrawingState::Ground {
+                        log_line(&mut state, LogTag::Mouse, &format!("clicked {},{}", mouse_pos.0, mouse_pos.1));
+                        
+                        state.sel_cell = grid_interact(
+                            &mut state,
+                            if *drawing_state == DrawingState::Drawing {
+                                Box::new(obstacle_paint)
+                            } else {
+                                Box::new(obstacle_erase)
+                            });
+                        recalc = true;
+                    }
+
+                    if let Some(sel_cell) = state.sel_cell {
+                        if let Object::GridObj(grid) = state.objects.get(state.grids[0]).unwrap() {
+                            for i in 0..grid.array.len() {
+                                let dist = grid.chebyshev_distance(sel_cell, i);
+                                let pos = grid.idx_xy(i).unwrap();
+                                let pos = (pos.0 as f32, pos.1 as f32);
+                                draw_text(&dist.to_string(), pos.0, pos.1, 24.0, WHITE);
+                                let pos = (pos.0 + grid.cell_dims().0 as f32/2.0, pos.1 + grid.cell_dims().1 as f32/2.0);
+                                draw_circle(pos.0, pos.1, 2.0, WHITE);
+                            }
+                        } else {
+                            unreachable!();
+                        }
+                    }
+
+                    if recalc {
+                        let grid_handle = state.grids[0];
+                        for bot in state.bots.clone() {
+                            let objects = &mut state.objects;
+                            if let Object::BotObj(bot) = objects.get(bot).unwrap() {
+                                if let Object::GridObj(grid) = objects.get(grid_handle).unwrap() {
+                                    bot.borrow_mut().recalc_path(grid);
+                                }
+                            }
+                        }
+                    }
+                },
+                InputMode::Bots(ref mut origin_opt) => {
+                    match origin_opt {
+                        None => {
+                            if is_mouse_button_released(MouseButton::Left) {
+                                grid_interact(&mut state, Box::new(|_grid: &mut Grid, idx: usize| {
+                                    *origin_opt = Some(idx);
+                                    idx
+                                }));
+                            }
+                        },
+                        Some(origin_idx) => {
+                            if let Object::GridObj(grid) = state.objects.get(state.grids[0]).unwrap() {
+                                let mut pos = grid.idx_xy(*origin_idx).unwrap();
+                                pos.0 += grid.cell_dims().0/2.0;
+                                pos.1 += grid.cell_dims().1/2.0;
+                                
+                                draw_circle_lines(pos.0 as f32, pos.1 as f32, (grid.cell_dims().0.min(grid.cell_dims().1)/2.0) as f32, 2.0, WHITE);
+                            }
+                            if is_mouse_button_released(MouseButton::Left) {
+                                grid_interact(&mut state, Box::new(|_grid: &mut Grid, idx: usize| {
+                                    idx
+                                })).inspect(|dest_idx| {
+                                    bot_creation_info = Some((*origin_idx, *dest_idx));
+                                });
+                                *origin_opt = None;
+                            }
+                        },
+                    }
+                },
+                InputMode::Run(ref mut tick) => {
+                    *tick = tick_time.as_secs() as i32;
+                }
+            }
+            state.input_mode = cur_mode;
+
+            if let Some((origin_idx, dest_idx)) = bot_creation_info {
+                let grid_handle = state.grids[0];
+                let grid = state.objects.get_mut(grid_handle);
+                if let Some(Object::GridObj(ref mut grid)) = grid {
+                    let bot = Bot::new(&grid, origin_idx, dest_idx, random_color());
+                    let bot_handle = state.objects.insert(Object::BotObj(RefCell::new(bot)));
+                    state.bots.push(bot_handle);
                 }
             }
         }
 
-        draw_text("IT WORKS!", 20.0, 20.0, 30.0, DARKGRAY);
+        draw_text(&format!("Input mode: {:?}", state.input_mode), 20.0, 20.0, 30.0, DARKGRAY);
 
         if is_key_released(KeyCode::R) {
             println!("{}", state.text_digest())

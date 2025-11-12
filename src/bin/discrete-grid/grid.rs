@@ -134,6 +134,8 @@ impl Grid {
         let x_dist = (a%self.size.0).abs_diff(b%self.size.0);
         x_dist.max(y_dist)
     }
+
+    pub fn size(&self) -> (usize, usize) { self.size }
 }
 
 impl Draw for Grid {
