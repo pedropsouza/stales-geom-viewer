@@ -71,7 +71,7 @@ impl Draw for Object {
 enum InputMode {
     Obstacles(DrawingState),
     Bots(Option<usize>),
-    Run(i32),
+    Run((Instant, Instant)),
 }
 
 #[derive(Debug)]
@@ -241,7 +241,7 @@ async fn main() {
         }
 
         let mut recalc = false;
-        { // Mouse handling
+        { // input handling
             let mouse_pos = mouse_position();
             if mouse_pos != state.prev_mouse_pos {
                 log_line(&mut state, LogTag::Mouse, &format!("pos {},{}", mouse_pos.0, mouse_pos.1));
@@ -290,15 +290,19 @@ async fn main() {
                 match
                 (state.input_mode.clone(),
                  is_mouse_button_down(MouseButton::Left), is_mouse_button_down(MouseButton::Right),
-                 is_key_down(KeyCode::B), is_key_down(KeyCode::Space)) {
-                    (InputMode::Obstacles(_), left, right, _, _) if left || right =>
+                 is_key_down(KeyCode::D), is_key_down(KeyCode::B), is_key_down(KeyCode::Space)) {
+                    (InputMode::Obstacles(_), left, right, _, _, _) if left || right =>
                         InputMode::Obstacles(
                             if left { DrawingState::Drawing }
                             else { DrawingState::Erasing }
                         ),
-                    (_, _, _, true, _) => InputMode::Bots(None),
-                    (_, _, _, _, true) => InputMode::Run(0),
-                    (prev, _,_,_,_) => prev,
+                    (_, _, _, true, _, _) => InputMode::Obstacles(DrawingState::Ground),
+                    (_, _, _, _, true, _) => InputMode::Bots(None),
+                    (_, _, _, _, _, true) => {
+                        let now = Instant::now();
+                        InputMode::Run((now, now))
+                    },
+                    (prev, _,_,_,_,_) => prev,
                 };
             let mut bot_creation_info: Option<(usize, usize)> = None;
             
@@ -379,7 +383,12 @@ async fn main() {
                     }
                 },
                 InputMode::Run(ref mut tick) => {
-                    *tick = tick_time.as_secs() as i32;
+                    tick.1 = Instant::now();
+                    for bot_handle in &state.bots {
+                        if let Object::BotObj(bot) = state.objects.get(*bot_handle).unwrap() {
+                            bot.borrow_mut().anim_step = tick.1.duration_since(tick.0).as_secs_f32();
+                        }
+                    }
                 }
             }
             state.input_mode = cur_mode;

@@ -14,6 +14,7 @@ pub struct Bot {
     pub dest_idx: usize,
     pub origin_idx: usize,
     pub path: Result<Vec<(usize, (f32,f32))>, String>,
+    pub anim_step: f32,
     clr: Color,
     radius: f32,
 }
@@ -27,7 +28,7 @@ impl Bot {
         let path = Self::calc_path(grid, origin_idx, dest_idx);
 
         Self {
-            pos, origin_idx, dest_idx, clr, radius: radius as f32, path
+            pos, origin_idx, dest_idx, clr, radius: radius as f32, path, anim_step: 0.0,
         }
     }
 
@@ -113,7 +114,19 @@ impl Bot {
 
 impl Draw for Bot {
     fn draw(&self) {
-        draw_circle(self.pos.x() as f32, self.pos.y() as f32, self.radius, self.clr);
+        let (a,b) = match &self.path {
+            Ok(path) => {
+                let a_i = (self.anim_step.floor() as usize) % path.len();
+                let b_i = ((self.anim_step + 1.0).floor() as usize) % path.len();
+                let xy_a = path[a_i].1;
+                let xy_b = path[b_i].1;
+                (Point::new(xy_a.0.into(), xy_a.1.into()),
+                 Point::new(xy_b.0.into(), xy_b.1.into()))
+            },
+            Err(_) => (self.pos, self.pos),
+        };
+        let pos = a * (1.0 - self.anim_step.fract() as f64) + b * (self.anim_step.fract() as f64);
+        draw_circle(pos.x() as f32, pos.y() as f32, self.radius, self.clr);
 
         match self.path {
             Ok(ref path) => {
