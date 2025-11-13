@@ -1,0 +1,669 @@
+(FrameTime) [0s40101810ns]: 0.016666668 / 60
+(FrameTime) [0s52927722ns]: 0.050781965 / 19
+(FrameTime) [0s59837149ns]: 0.0030565262 / 327
+(FrameTime) [0s60748207ns]: 0.007000208 / 142
+(FrameTime) [0s61572413ns]: 0.0008189678 / 1221
+(FrameTime) [0s62349720ns]: 0.0008225441 / 1215
+(FrameTime) [0s63335589ns]: 0.0009326935 / 1072
+(FrameTime) [0s85996965ns]: 0.00082683563 / 1209
+(FrameTime) [0s87721268ns]: 0.023533583 / 42
+(FrameTime) [0s93200944ns]: 0.0008826256 / 1132
+(FrameTime) [0s99749995ns]: 0.0056364536 / 177
+(FrameTime) [0s105603521ns]: 0.0068392754 / 146
+(FrameTime) [0s111381957ns]: 0.005986929 / 167
+(FrameTime) [0s118050242ns]: 0.0052888393 / 189
+(FrameTime) [0s123310737ns]: 0.006607771 / 151
+(FrameTime) [0s129732258ns]: 0.0058090687 / 172
+(FrameTime) [0s135646309ns]: 0.0058472157 / 171
+(FrameTime) [0s141476792ns]: 0.005960226 / 167
+(FrameTime) [0s147217838ns]: 0.0057783127 / 173
+(FrameTime) [0s153523843ns]: 0.00575161 / 173
+(FrameTime) [0s159781398ns]: 0.0068001747 / 147
+(FrameTime) [0s165602443ns]: 0.0061290264 / 163
+(FrameTime) [0s171811236ns]: 0.005886078 / 169
+(FrameTime) [0s177766774ns]: 0.0061559677 / 162
+(FrameTime) [0s183646721ns]: 0.0060043335 / 166
+(FrameTime) [0s189831198ns]: 0.0056095123 / 178
+(FrameTime) [0s195415069ns]: 0.006364584 / 157
+(FrameTime) [0s201417094ns]: 0.005208254 / 192
+(FrameTime) [0s207108397ns]: 0.0060124397 / 166
+(FrameTime) [0s212719479ns]: 0.005812645 / 172
+(FrameTime) [0s218285056ns]: 0.005850315 / 170
+(FrameTime) [0s224304974ns]: 0.005194187 / 192
+(FrameTime) [0s229893624ns]: 0.006610632 / 151
+(FrameTime) [0s235694122ns]: 0.005658865 / 176
+(FrameTime) [0s241689775ns]: 0.005426407 / 184
+(FrameTime) [0s247723059ns]: 0.0064177513 / 155
+(FrameTime) [0s253771451ns]: 0.0059993267 / 166
+(FrameTime) [0s259780509ns]: 0.0060749054 / 164
+(FrameTime) [0s265932886ns]: 0.006030798 / 165
+(FrameTime) [0s271966771ns]: 0.0061409473 / 162
+(FrameTime) [0s277999945ns]: 0.0060241222 / 165
+(FrameTime) [0s284122176ns]: 0.005995989 / 166
+(FrameTime) [0s290188882ns]: 0.0061216354 / 163
+(FrameTime) [0s296281187ns]: 0.0060870647 / 164
+(FrameTime) [0s302583184ns]: 0.006059885 / 165
+(FrameTime) [0s308630905ns]: 0.006184101 / 161
+(FrameTime) [0s314037153ns]: 0.0063183308 / 158
+(FrameTime) [0s320364088ns]: 0.005241394 / 190
+(FrameTime) [0s326366744ns]: 0.00625062 / 159
+(FrameTime) [0s332437779ns]: 0.005781412 / 172
+(FrameTime) [0s338558266ns]: 0.0062818527 / 159
+(FrameTime) [0s344688532ns]: 0.006024599 / 165
+(FrameTime) [0s350662464ns]: 0.0060796738 / 164
+(FrameTime) [0s356717348ns]: 0.005990267 / 166
+(FrameTime) [0s362751764ns]: 0.0060243607 / 165
+(FrameTime) [0s368892510ns]: 0.006018162 / 166
+(FrameTime) [0s374828641ns]: 0.00643301 / 155
+(FrameTime) [0s381014732ns]: 0.0055954456 / 178
+(FrameTime) [0s387090205ns]: 0.006057024 / 165
+(FrameTime) [0s393230569ns]: 0.0060272217 / 165
+(FrameTime) [0s399279232ns]: 0.0063409805 / 157
+(FrameTime) [0s405277139ns]: 0.0060224533 / 166
+(FrameTime) [0s411348074ns]: 0.006001711 / 166
+(FrameTime) [0s417445368ns]: 0.006071806 / 164
+(FrameTime) [0s423297772ns]: 0.006100893 / 163
+(FrameTime) [0s429454568ns]: 0.005829811 / 171
+(FrameTime) [0s435517417ns]: 0.0061872005 / 161
+(FrameTime) [0s441567763ns]: 0.006053686 / 165
+(FrameTime) [0s447660809ns]: 0.0062747 / 159
+(FrameTime) [0s453698741ns]: 0.006049156 / 165
+(FrameTime) [0s459734229ns]: 0.006039381 / 165
+(FrameTime) [0s465876006ns]: 0.006004095 / 166
+(FrameTime) [0s471771732ns]: 0.0060908794 / 164
+(FrameTime) [0s477948495ns]: 0.005944729 / 168
+(FrameTime) [0s484106403ns]: 0.006063223 / 164
+(FrameTime) [0s490037455ns]: 0.006447792 / 155
+(FrameTime) [0s496127485ns]: 0.005604267 / 178
+(FrameTime) [0s502239647ns]: 0.006421089 / 155
+(FrameTime) [0s508433972ns]: 0.006118059 / 163
+(FrameTime) [0s514254537ns]: 0.0058505535 / 170
+(FrameTime) [0s520414819ns]: 0.0057094097 / 175
+(FrameTime) [0s526421994ns]: 0.006174803 / 161
+(FrameTime) [0s532496125ns]: 0.0060026646 / 166
+(FrameTime) [0s538561789ns]: 0.006082058 / 164
+(FrameTime) [0s544605603ns]: 0.0060465336 / 165
+(FrameTime) [0s550862085ns]: 0.0060458183 / 165
+(FrameTime) [0s556825979ns]: 0.0062747 / 159
+(FrameTime) [0s562799631ns]: 0.00602746 / 165
+(FrameTime) [0s569126415ns]: 0.00593853 / 168
+(FrameTime) [0s575214812ns]: 0.0066206455 / 151
+(FrameTime) [0s580990733ns]: 0.0059657097 / 167
+(FrameTime) [0s586998339ns]: 0.0059182644 / 168
+(FrameTime) [0s593100292ns]: 0.0058898926 / 169
+(FrameTime) [0s599102728ns]: 0.0060162544 / 166
+(FrameTime) [0s605152592ns]: 0.006024599 / 165
+(FrameTime) [0s611238645ns]: 0.006027937 / 165
+(FrameTime) [0s617384500ns]: 0.0063798428 / 156
+(FrameTime) [0s623370445ns]: 0.0061147213 / 163
+(FrameTime) [0s629414509ns]: 0.0059826374 / 167
+(FrameTime) [0s635588537ns]: 0.0060563087 / 165
+(FrameTime) [0s641526642ns]: 0.0061609745 / 162
+(FrameTime) [0s647630619ns]: 0.0059406757 / 168
+(FrameTime) [0s653721561ns]: 0.006093502 / 164
+(FrameTime) [0s659765685ns]: 0.0061171055 / 163
+(FrameTime) [0s665826470ns]: 0.0060322285 / 165
+(FrameTime) [0s671887346ns]: 0.0060613155 / 164
+(FrameTime) [0s677934596ns]: 0.006040573 / 165
+(FrameTime) [0s684025808ns]: 0.0060186386 / 166
+(FrameTime) [0s690045887ns]: 0.00605011 / 165
+(FrameTime) [0s696095622ns]: 0.0059919357 / 166
+(FrameTime) [0s702299946ns]: 0.0060153008 / 166
+(FrameTime) [0s708235807ns]: 0.0060932636 / 164
+(FrameTime) [0s714257419ns]: 0.0060060024 / 166
+(FrameTime) [0s720282708ns]: 0.0059661865 / 167
+(FrameTime) [0s726401623ns]: 0.0062594414 / 159
+(FrameTime) [0s732457178ns]: 0.0058293343 / 171
+(FrameTime) [0s738490542ns]: 0.00635314 / 157
+(FrameTime) [0s744629755ns]: 0.005718231 / 174
+(FrameTime) [0s750748318ns]: 0.006483078 / 154
+(FrameTime) [0s756661637ns]: 0.006155491 / 162
+(FrameTime) [0s762945691ns]: 0.0059165955 / 169
+(FrameTime) [0s769030482ns]: 0.0063033104 / 158
+(FrameTime) [0s774957216ns]: 0.0053851604 / 185
+(FrameTime) [0s781020456ns]: 0.0066006184 / 151
+(FrameTime) [0s787054120ns]: 0.006042719 / 165
+(FrameTime) [0s793154420ns]: 0.0061531067 / 162
+(FrameTime) [0s799190038ns]: 0.005866289 / 170
+(FrameTime) [0s805283454ns]: 0.006014824 / 166
+(FrameTime) [0s811412037ns]: 0.0060670376 / 164
+(FrameTime) [0s817496607ns]: 0.0060749054 / 164
+(FrameTime) [0s823558404ns]: 0.006066799 / 164
+(FrameTime) [0s829666859ns]: 0.0060355663 / 165
+(FrameTime) [0s835640531ns]: 0.0060470104 / 165
+(FrameTime) [0s841542298ns]: 0.0062646866 / 159
+(FrameTime) [0s847948421ns]: 0.0056147575 / 178
+(FrameTime) [0s853629224ns]: 0.0068364143 / 146
+(FrameTime) [0s860148339ns]: 0.0051054955 / 195
+(FrameTime) [0s866053512ns]: 0.0070631504 / 141
+(FrameTime) [0s872130007ns]: 0.005215168 / 191
+(FrameTime) [0s878107947ns]: 0.0067253113 / 148
+(FrameTime) [0s883949301ns]: 0.0060014725 / 166
+(FrameTime) [0s889891594ns]: 0.0057587624 / 173
+(FrameTime) [0s896030817ns]: 0.0059399605 / 168
+(FrameTime) [0s902113433ns]: 0.006115675 / 163
+(FrameTime) [0s908073380ns]: 0.0061092377 / 163
+(FrameTime) [0s914206190ns]: 0.0059332848 / 168
+(FrameTime) [0s920184100ns]: 0.0061306953 / 163
+(FrameTime) [0s926280182ns]: 0.0059747696 / 167
+(Mouse) [0s926280182ns]: pos 791,773
+(FrameTime) [0s932324436ns]: 0.0060937405 / 164
+(Mouse) [0s932324436ns]: pos 795,770
+(FrameTime) [0s938431458ns]: 0.0058135986 / 172
+(Mouse) [0s938431458ns]: pos 824,754
+(FrameTime) [0s944415680ns]: 0.0062680244 / 159
+(FrameTime) [0s950505109ns]: 0.005957842 / 167
+(Mouse) [0s950505109ns]: pos 864,732
+(FrameTime) [0s956631587ns]: 0.0060944557 / 164
+(Mouse) [0s956631587ns]: pos 902,708
+(FrameTime) [0s962688446ns]: 0.0060966015 / 164
+(Mouse) [0s962688446ns]: pos 936,688
+(FrameTime) [0s968727520ns]: 0.0063023567 / 158
+(FrameTime) [0s974723594ns]: 0.0056097507 / 178
+(Mouse) [0s974723594ns]: pos 962,674
+(FrameTime) [0s980834694ns]: 0.0060572624 / 165
+(Mouse) [0s980834694ns]: pos 977,665
+(FrameTime) [0s986874791ns]: 0.0064809322 / 154
+(Mouse) [0s986874791ns]: pos 983,662
+(FrameTime) [0s992962737ns]: 0.0060265064 / 165
+(FrameTime) [0s999147224ns]: 0.005980253 / 167
+(Mouse) [0s999147224ns]: pos 986,661
+(FrameTime) [1s5145062ns]: 0.006236315 / 160
+(Mouse) [1s5145062ns]: pos 987,660
+(FrameTime) [1s11186501ns]: 0.006002426 / 166
+(Mouse) [1s11186501ns]: pos 986,658
+(FrameTime) [1s17419489ns]: 0.006051302 / 165
+(FrameTime) [1s23549464ns]: 0.005839348 / 171
+(Mouse) [1s23549464ns]: pos 981,653
+(FrameTime) [1s29432346ns]: 0.0064742565 / 154
+(Mouse) [1s29432346ns]: pos 973,640
+(FrameTime) [1s35585094ns]: 0.005885601 / 169
+(Mouse) [1s35585094ns]: pos 963,617
+(FrameTime) [1s41578954ns]: 0.0060851574 / 164
+(FrameTime) [1s47680095ns]: 0.0060174465 / 166
+(Mouse) [1s47680095ns]: pos 959,585
+(FrameTime) [1s53631455ns]: 0.0060186386 / 166
+(Mouse) [1s53631455ns]: pos 959,555
+(FrameTime) [1s59722086ns]: 0.0060198307 / 166
+(Mouse) [1s59722086ns]: pos 965,525
+(FrameTime) [1s65854576ns]: 0.0060424805 / 165
+(Mouse) [1s65854576ns]: pos 967,501
+(FrameTime) [1s72077606ns]: 0.006047964 / 165
+(FrameTime) [1s78009129ns]: 0.006064892 / 164
+(Mouse) [1s78009129ns]: pos 971,479
+(FrameTime) [1s84287282ns]: 0.006072283 / 164
+(Mouse) [1s84287282ns]: pos 971,464
+(FrameTime) [1s90369437ns]: 0.006613493 / 151
+(Mouse) [1s90369437ns]: pos 970,450
+(FrameTime) [1s96092589ns]: 0.0060682297 / 164
+(FrameTime) [1s102209129ns]: 0.00564003 / 177
+(Mouse) [1s102209129ns]: pos 967,443
+(FrameTime) [1s108167483ns]: 0.00586915 / 170
+(Mouse) [1s108167483ns]: pos 964,439
+(FrameTime) [1s114299542ns]: 0.0057942867 / 172
+(Mouse) [1s114299542ns]: pos 963,438
+(FrameTime) [1s120290576ns]: 0.0065481663 / 152
+(FrameTime) [1s126406395ns]: 0.005925417 / 168
+(Mouse) [1s126406395ns]: pos 961,436
+(FrameTime) [1s132376811ns]: 0.006175041 / 161
+(Mouse) [1s132376811ns]: pos 960,435
+(FrameTime) [1s138537544ns]: 0.0059626102 / 167
+(FrameTime) [1s144576378ns]: 0.0061097145 / 163
+(FrameTime) [1s150809035ns]: 0.0060379505 / 165
+(FrameTime) [1s156657232ns]: 0.0062081814 / 161
+(Mouse) [1s156657232ns]: pos 959,434
+(FrameTime) [1s162535375ns]: 0.0060064793 / 166
+(FrameTime) [1s168611700ns]: 0.0054409504 / 183
+(FrameTime) [1s174820953ns]: 0.006094694 / 164
+(FrameTime) [1s180535089ns]: 0.0062146187 / 160
+(Mouse) [1s180535089ns]: pos 959,430
+(FrameTime) [1s186806038ns]: 0.006013632 / 166
+(Mouse) [1s186806038ns]: pos 958,424
+(FrameTime) [1s193319613ns]: 0.0056996346 / 175
+(FrameTime) [1s199205921ns]: 0.006946802 / 143
+(Mouse) [1s199205921ns]: pos 954,413
+(FrameTime) [1s205055751ns]: 0.005783558 / 172
+(Mouse) [1s205055751ns]: pos 947,397
+(FrameTime) [1s211086390ns]: 0.005859852 / 170
+(Mouse) [1s211086390ns]: pos 937,376
+(FrameTime) [1s217328335ns]: 0.0061810017 / 161
+(FrameTime) [1s223189866ns]: 0.0061998367 / 161
+(Mouse) [1s223189866ns]: pos 925,356
+(FrameTime) [1s229296868ns]: 0.005650997 / 176
+(Mouse) [1s229296868ns]: pos 911,334
+(FrameTime) [1s235436251ns]: 0.006079912 / 164
+(Mouse) [1s235436251ns]: pos 899,314
+(FrameTime) [1s241485305ns]: 0.0060646534 / 164
+(FrameTime) [1s247485637ns]: 0.0059821606 / 167
+(Mouse) [1s247485637ns]: pos 889,294
+(FrameTime) [1s253548276ns]: 0.006407976 / 156
+(Mouse) [1s253548276ns]: pos 875,276
+(FrameTime) [1s259598090ns]: 0.0060548782 / 165
+(Mouse) [1s259598090ns]: pos 865,258
+(FrameTime) [1s265631454ns]: 0.006062269 / 164
+(FrameTime) [1s271753214ns]: 0.0060842037 / 164
+(Mouse) [1s271753214ns]: pos 861,243
+(FrameTime) [1s278008524ns]: 0.0062012672 / 161
+(Mouse) [1s278008524ns]: pos 858,229
+(FrameTime) [1s283931241ns]: 0.0061659813 / 162
+(Mouse) [1s283931241ns]: pos 856,218
+(FrameTime) [1s290009689ns]: 0.0059621334 / 167
+(Mouse) [1s290009689ns]: pos 856,213
+(FrameTime) [1s295937645ns]: 0.006017208 / 166
+(FrameTime) [1s302080635ns]: 0.0053682327 / 186
+(Mouse) [1s302080635ns]: pos 856,210
+(FrameTime) [1s308101766ns]: 0.006165743 / 162
+(Mouse) [1s308101766ns]: pos 856,208
+(FrameTime) [1s314304868ns]: 0.0060048103 / 166
+(Mouse) [1s314304868ns]: pos 857,206
+(FrameTime) [1s320348812ns]: 0.006570101 / 152
+(FrameTime) [1s326426880ns]: 0.0060167313 / 166
+(Mouse) [1s326426880ns]: pos 858,205
+(FrameTime) [1s332541466ns]: 0.006096363 / 164
+(FrameTime) [1s338573427ns]: 0.0059821606 / 167
+(FrameTime) [1s344840640ns]: 0.006025791 / 165
+(FrameTime) [1s351065483ns]: 0.006168127 / 162
+(FrameTime) [1s356762887ns]: 0.006166458 / 162
+(FrameTime) [1s362778317ns]: 0.005761862 / 173
+(FrameTime) [1s368815559ns]: 0.0060174465 / 166
+(FrameTime) [1s374902142ns]: 0.005972147 / 167
+(FrameTime) [1s380975171ns]: 0.0060687065 / 164
+(FrameTime) [1s386884973ns]: 0.0060288906 / 165
+(Mouse) [1s386884973ns]: clicked 858,205
+(Select) [1s386884973ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [1s430450959ns]: 0.048000336 / 20
+(Mouse) [1s430450959ns]: pos 860,207
+(Mouse) [1s430450959ns]: clicked 860,207
+(Select) [1s430450959ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [1s472338398ns]: 0.042463303 / 23
+(Mouse) [1s472338398ns]: pos 860,214
+(Mouse) [1s472338398ns]: clicked 860,214
+(Select) [1s472338398ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [1s512459945ns]: 0.040119648 / 24
+(Mouse) [1s512459945ns]: pos 866,246
+(Mouse) [1s512459945ns]: clicked 866,246
+(Select) [1s512459945ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [1s552488739ns]: 0.040041447 / 24
+(Mouse) [1s552488739ns]: pos 874,291
+(Mouse) [1s552488739ns]: clicked 874,291
+(Select) [1s552488739ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [1s593235298ns]: 0.04075122 / 24
+(Mouse) [1s593235298ns]: pos 874,321
+(Mouse) [1s593235298ns]: clicked 874,321
+(Select) [1s593235298ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [1s634025749ns]: 0.040770292 / 24
+(Mouse) [1s634025749ns]: pos 874,345
+(Mouse) [1s634025749ns]: clicked 874,345
+(Select) [1s634025749ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [1s674952677ns]: 0.04093647 / 24
+(Mouse) [1s674952677ns]: pos 871,375
+(Mouse) [1s674952677ns]: clicked 871,375
+(Select) [1s674952677ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [1s715953593ns]: 0.041003704 / 24
+(Mouse) [1s715953593ns]: pos 871,403
+(Mouse) [1s715953593ns]: clicked 871,403
+(Select) [1s715953593ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [1s756773450ns]: 0.04082799 / 24
+(Mouse) [1s756773450ns]: pos 868,418
+(Mouse) [1s756773450ns]: clicked 868,418
+(Select) [1s756773450ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [1s797496375ns]: 0.040730476 / 24
+(Mouse) [1s797496375ns]: pos 866,420
+(Mouse) [1s797496375ns]: clicked 866,420
+(Select) [1s797496375ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [1s838146443ns]: 0.040656567 / 24
+(Mouse) [1s838146443ns]: clicked 866,420
+(Select) [1s838146443ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [1s879741374ns]: 0.040887594 / 24
+(Mouse) [1s879741374ns]: clicked 866,420
+(Select) [1s879741374ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [1s921979049ns]: 0.042850018 / 23
+(Mouse) [1s921979049ns]: clicked 866,420
+(Select) [1s921979049ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [1s963357523ns]: 0.0414176 / 24
+(Mouse) [1s963357523ns]: clicked 866,420
+(Select) [1s963357523ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s5255271ns]: 0.04182887 / 23
+(Mouse) [2s5255271ns]: pos 863,427
+(Mouse) [2s5255271ns]: clicked 863,427
+(Select) [2s5255271ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s47050327ns]: 0.04175043 / 23
+(Mouse) [2s47050327ns]: pos 853,447
+(Mouse) [2s47050327ns]: clicked 853,447
+(Select) [2s47050327ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s88544218ns]: 0.041577578 / 24
+(Mouse) [2s88544218ns]: pos 832,486
+(Mouse) [2s88544218ns]: clicked 832,486
+(Select) [2s88544218ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s129551606ns]: 0.041053534 / 24
+(Mouse) [2s129551606ns]: pos 812,520
+(Mouse) [2s129551606ns]: clicked 812,520
+(Select) [2s129551606ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s170467854ns]: 0.040910244 / 24
+(Mouse) [2s170467854ns]: pos 799,544
+(Mouse) [2s170467854ns]: clicked 799,544
+(Select) [2s170467854ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s211763452ns]: 0.041152477 / 24
+(Mouse) [2s211763452ns]: pos 791,560
+(Mouse) [2s211763452ns]: clicked 791,560
+(Select) [2s211763452ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s255041288ns]: 0.043358803 / 23
+(Mouse) [2s255041288ns]: pos 772,587
+(Mouse) [2s255041288ns]: clicked 772,587
+(Select) [2s255041288ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s296319445ns]: 0.041307926 / 24
+(Mouse) [2s296319445ns]: pos 762,611
+(Mouse) [2s296319445ns]: clicked 762,611
+(Select) [2s296319445ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s337221696ns]: 0.040870428 / 24
+(Mouse) [2s337221696ns]: pos 758,623
+(Mouse) [2s337221696ns]: clicked 758,623
+(Select) [2s337221696ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s377813275ns]: 0.040676594 / 24
+(Mouse) [2s377813275ns]: clicked 758,623
+(Select) [2s377813275ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s418536891ns]: 0.04069972 / 24
+(Mouse) [2s418536891ns]: pos 764,621
+(Mouse) [2s418536891ns]: clicked 764,621
+(Select) [2s418536891ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s459302035ns]: 0.040767193 / 24
+(Mouse) [2s459302035ns]: pos 796,595
+(Mouse) [2s459302035ns]: clicked 796,595
+(Select) [2s459302035ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s500151808ns]: 0.040835857 / 24
+(Mouse) [2s500151808ns]: pos 858,545
+(Mouse) [2s500151808ns]: clicked 858,545
+(Select) [2s500151808ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s540538863ns]: 0.04040122 / 24
+(Mouse) [2s540538863ns]: pos 887,512
+(Mouse) [2s540538863ns]: clicked 887,512
+(Select) [2s540538863ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s580895832ns]: 0.040356398 / 24
+(Mouse) [2s580895832ns]: pos 910,479
+(Mouse) [2s580895832ns]: clicked 910,479
+(Select) [2s580895832ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s620947688ns]: 0.040054798 / 24
+(Mouse) [2s620947688ns]: pos 919,460
+(Mouse) [2s620947688ns]: clicked 919,460
+(Select) [2s620947688ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s660780254ns]: 0.03983283 / 25
+(Mouse) [2s660780254ns]: pos 921,458
+(Mouse) [2s660780254ns]: clicked 921,458
+(Select) [2s660780254ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s700605916ns]: 0.039782047 / 25
+(Mouse) [2s700605916ns]: pos 920,457
+(Mouse) [2s700605916ns]: clicked 920,457
+(Select) [2s700605916ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s740398817ns]: 0.039829254 / 25
+(Mouse) [2s740398817ns]: pos 907,475
+(Mouse) [2s740398817ns]: clicked 907,475
+(Select) [2s740398817ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s780531936ns]: 0.04006815 / 24
+(Mouse) [2s780531936ns]: pos 898,510
+(Mouse) [2s780531936ns]: clicked 898,510
+(Select) [2s780531936ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s820662801ns]: 0.040118933 / 24
+(Mouse) [2s820662801ns]: pos 898,535
+(Mouse) [2s820662801ns]: clicked 898,535
+(Select) [2s820662801ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s860645267ns]: 0.040065765 / 24
+(Mouse) [2s860645267ns]: pos 914,547
+(Mouse) [2s860645267ns]: clicked 914,547
+(Select) [2s860645267ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s900529770ns]: 0.039721966 / 25
+(Mouse) [2s900529770ns]: pos 961,549
+(Mouse) [2s900529770ns]: clicked 961,549
+(Select) [2s900529770ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s940560086ns]: 0.040149212 / 24
+(Mouse) [2s940560086ns]: pos 1042,544
+(Mouse) [2s940560086ns]: clicked 1042,544
+(Select) [2s940560086ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [2s980304486ns]: 0.039673567 / 25
+(Mouse) [2s980304486ns]: pos 1107,530
+(Mouse) [2s980304486ns]: clicked 1107,530
+(Select) [2s980304486ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s19759734ns]: 0.039469004 / 25
+(Mouse) [3s19759734ns]: pos 1129,528
+(Mouse) [3s19759734ns]: clicked 1129,528
+(Select) [3s19759734ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s59197308ns]: 0.039439917 / 25
+(Mouse) [3s59197308ns]: pos 1142,535
+(Mouse) [3s59197308ns]: clicked 1142,535
+(Select) [3s59197308ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s98418127ns]: 0.039197445 / 25
+(Mouse) [3s98418127ns]: pos 1157,572
+(Mouse) [3s98418127ns]: clicked 1157,572
+(Select) [3s98418127ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s137264723ns]: 0.03883362 / 25
+(Mouse) [3s137264723ns]: pos 1168,606
+(Mouse) [3s137264723ns]: clicked 1168,606
+(Select) [3s137264723ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s176207360ns]: 0.038948774 / 25
+(Mouse) [3s176207360ns]: pos 1171,640
+(Mouse) [3s176207360ns]: clicked 1171,640
+(Select) [3s176207360ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s214914474ns]: 0.038707256 / 25
+(Mouse) [3s214914474ns]: pos 1161,673
+(Mouse) [3s214914474ns]: clicked 1161,673
+(Select) [3s214914474ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s253756983ns]: 0.03879571 / 25
+(Mouse) [3s253756983ns]: pos 1134,691
+(Mouse) [3s253756983ns]: clicked 1134,691
+(Select) [3s253756983ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s294502390ns]: 0.040737152 / 24
+(Mouse) [3s294502390ns]: pos 1080,712
+(Mouse) [3s294502390ns]: clicked 1080,712
+(Select) [3s294502390ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s333740351ns]: 0.039268732 / 25
+(Mouse) [3s333740351ns]: pos 1034,718
+(Mouse) [3s333740351ns]: clicked 1034,718
+(Select) [3s333740351ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s372342228ns]: 0.038630962 / 25
+(Mouse) [3s372342228ns]: pos 990,719
+(Mouse) [3s372342228ns]: clicked 990,719
+(Select) [3s372342228ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s410883692ns]: 0.03854537 / 25
+(Mouse) [3s410883692ns]: pos 958,719
+(Mouse) [3s410883692ns]: clicked 958,719
+(Select) [3s410883692ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s449762519ns]: 0.03887129 / 25
+(Mouse) [3s449762519ns]: pos 898,719
+(Mouse) [3s449762519ns]: clicked 898,719
+(Select) [3s449762519ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s489816820ns]: 0.040057182 / 24
+(Mouse) [3s489816820ns]: pos 807,727
+(Mouse) [3s489816820ns]: clicked 807,727
+(Select) [3s489816820ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s529501779ns]: 0.039695263 / 25
+(Mouse) [3s529501779ns]: pos 787,732
+(Mouse) [3s529501779ns]: clicked 787,732
+(Select) [3s529501779ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s569396791ns]: 0.03980136 / 25
+(Mouse) [3s569396791ns]: pos 750,735
+(Mouse) [3s569396791ns]: clicked 750,735
+(Select) [3s569396791ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s609740876ns]: 0.040296316 / 24
+(Mouse) [3s609740876ns]: pos 697,735
+(Mouse) [3s609740876ns]: clicked 697,735
+(Select) [3s609740876ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s649729454ns]: 0.04011631 / 24
+(Mouse) [3s649729454ns]: pos 651,731
+(Mouse) [3s649729454ns]: clicked 651,731
+(Select) [3s649729454ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s689636810ns]: 0.03990817 / 25
+(Mouse) [3s689636810ns]: pos 597,698
+(Mouse) [3s689636810ns]: clicked 597,698
+(Select) [3s689636810ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s729299035ns]: 0.039663315 / 25
+(Mouse) [3s729299035ns]: pos 558,647
+(Mouse) [3s729299035ns]: clicked 558,647
+(Select) [3s729299035ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s768890198ns]: 0.03958273 / 25
+(Mouse) [3s768890198ns]: pos 509,566
+(Mouse) [3s768890198ns]: clicked 509,566
+(Select) [3s768890198ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s808214631ns]: 0.039325953 / 25
+(Mouse) [3s808214631ns]: pos 466,481
+(Mouse) [3s808214631ns]: clicked 466,481
+(Select) [3s808214631ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s847521941ns]: 0.039292097 / 25
+(Mouse) [3s847521941ns]: pos 460,435
+(Mouse) [3s847521941ns]: clicked 460,435
+(Select) [3s847521941ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s888568212ns]: 0.04105997 / 24
+(Mouse) [3s888568212ns]: pos 461,393
+(Mouse) [3s888568212ns]: clicked 461,393
+(Select) [3s888568212ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s929945244ns]: 0.04131174 / 24
+(Mouse) [3s929945244ns]: pos 474,340
+(Mouse) [3s929945244ns]: clicked 474,340
+(Select) [3s929945244ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [3s971711706ns]: 0.04154849 / 24
+(Mouse) [3s971711706ns]: pos 488,307
+(Mouse) [3s971711706ns]: clicked 488,307
+(Select) [3s971711706ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s12780960ns]: 0.041137934 / 24
+(Mouse) [4s12780960ns]: pos 501,287
+(Mouse) [4s12780960ns]: clicked 501,287
+(Select) [4s12780960ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s54073614ns]: 0.0408628 / 24
+(Mouse) [4s54073614ns]: pos 527,273
+(Mouse) [4s54073614ns]: clicked 527,273
+(Select) [4s54073614ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s94652188ns]: 0.041009665 / 24
+(Mouse) [4s94652188ns]: pos 567,262
+(Mouse) [4s94652188ns]: clicked 567,262
+(Select) [4s94652188ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s135032300ns]: 0.040386677 / 24
+(Mouse) [4s135032300ns]: pos 619,258
+(Mouse) [4s135032300ns]: clicked 619,258
+(Select) [4s135032300ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s175383127ns]: 0.040340424 / 24
+(Mouse) [4s175383127ns]: pos 643,260
+(Mouse) [4s175383127ns]: clicked 643,260
+(Select) [4s175383127ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s215778738ns]: 0.040333748 / 24
+(Mouse) [4s215778738ns]: pos 648,264
+(Mouse) [4s215778738ns]: clicked 648,264
+(Select) [4s215778738ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s256268286ns]: 0.04052925 / 24
+(Mouse) [4s256268286ns]: pos 639,281
+(Mouse) [4s256268286ns]: clicked 639,281
+(Select) [4s256268286ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s296528383ns]: 0.04027009 / 24
+(Mouse) [4s296528383ns]: pos 589,327
+(Mouse) [4s296528383ns]: clicked 589,327
+(Select) [4s296528383ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s339520112ns]: 0.042929173 / 23
+(Mouse) [4s339520112ns]: pos 528,403
+(Mouse) [4s339520112ns]: clicked 528,403
+(Select) [4s339520112ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s380945074ns]: 0.041417837 / 24
+(Mouse) [4s380945074ns]: pos 495,447
+(Mouse) [4s380945074ns]: clicked 495,447
+(Select) [4s380945074ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s421651097ns]: 0.040655136 / 24
+(Mouse) [4s421651097ns]: pos 484,474
+(Mouse) [4s421651097ns]: clicked 484,474
+(Select) [4s421651097ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s461723662ns]: 0.0401783 / 24
+(Mouse) [4s461723662ns]: pos 475,502
+(Mouse) [4s461723662ns]: clicked 475,502
+(Select) [4s461723662ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s501791319ns]: 0.04007721 / 24
+(Mouse) [4s501791319ns]: pos 471,541
+(Mouse) [4s501791319ns]: clicked 471,541
+(Select) [4s501791319ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s541562018ns]: 0.03976822 / 25
+(Mouse) [4s541562018ns]: pos 474,596
+(Mouse) [4s541562018ns]: clicked 474,596
+(Select) [4s541562018ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s581202112ns]: 0.039638996 / 25
+(Mouse) [4s581202112ns]: pos 481,640
+(Mouse) [4s581202112ns]: clicked 481,640
+(Select) [4s581202112ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s620803745ns]: 0.03957367 / 25
+(Mouse) [4s620803745ns]: pos 496,663
+(Mouse) [4s620803745ns]: clicked 496,663
+(Select) [4s620803745ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s660311250ns]: 0.03951001 / 25
+(Mouse) [4s660311250ns]: pos 504,671
+(Mouse) [4s660311250ns]: clicked 504,671
+(Select) [4s660311250ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s699393459ns]: 0.039125204 / 25
+(Mouse) [4s699393459ns]: clicked 504,671
+(Select) [4s699393459ns]: selected Handle { gen: 1, idx: 0 }
+(FrameTime) [4s738636028ns]: 0.039237022 / 25
+(Mouse) [4s738636028ns]: pos 506,671
+(FrameTime) [4s740238332ns]: 0.0012681484 / 788
+(FrameTime) [4s741912632ns]: 0.0015690327 / 637
+(FrameTime) [4s744339022ns]: 0.001680851 / 594
+(FrameTime) [4s750488654ns]: 0.0026319027 / 379
+(Mouse) [4s750488654ns]: pos 508,671
+(FrameTime) [4s756341520ns]: 0.0065760612 / 152
+(FrameTime) [4s762523863ns]: 0.0057730675 / 173
+(Mouse) [4s762523863ns]: pos 508,670
+(FrameTime) [4s768512984ns]: 0.0063900948 / 156
+(FrameTime) [4s774659069ns]: 0.005928278 / 168
+(Mouse) [4s774659069ns]: pos 508,669
+(FrameTime) [4s780852894ns]: 0.006190777 / 161
+(FrameTime) [4s786976748ns]: 0.0060794353 / 164
+(Mouse) [4s786976748ns]: pos 507,666
+(FrameTime) [4s793101724ns]: 0.006103039 / 163
+(FrameTime) [4s799319824ns]: 0.006016016 / 166
+(FrameTime) [4s804875292ns]: 0.0061097145 / 163
+(FrameTime) [4s810828265ns]: 0.00516963 / 193
+(FrameTime) [4s816940026ns]: 0.0059428215 / 168
+(FrameTime) [4s822943674ns]: 0.0061285496 / 163
+(FrameTime) [4s829081855ns]: 0.00598526 / 167
+(FrameTime) [4s835113315ns]: 0.0066411495 / 150
+(FrameTime) [4s841179370ns]: 0.0059411526 / 168
+(FrameTime) [4s847322881ns]: 0.006037712 / 165
+(FrameTime) [4s853355483ns]: 0.006098032 / 163
+(FrameTime) [4s859622315ns]: 0.0060095787 / 166
+(FrameTime) [4s865495879ns]: 0.006126642 / 163
+(FrameTime) [4s871571713ns]: 0.005905628 / 169
+(FrameTime) [4s877682803ns]: 0.0060658455 / 164
+(Mouse) [4s877682803ns]: pos 506,664
+(FrameTime) [4s883707761ns]: 0.006089449 / 164
+(FrameTime) [4s889768486ns]: 0.0060293674 / 165
+(FrameTime) [4s895999280ns]: 0.006005287 / 166
+(FrameTime) [4s901946413ns]: 0.0061552525 / 162
+(Mouse) [4s901946413ns]: pos 506,663
+(FrameTime) [4s908132102ns]: 0.0060150623 / 166
+(FrameTime) [4s914256948ns]: 0.0061438084 / 162
+(FrameTime) [4s920032118ns]: 0.0061614513 / 162
+(FrameTime) [4s926028011ns]: 0.0056843758 / 175
+(Mouse) [4s926028011ns]: pos 506,662
+(FrameTime) [4s932176241ns]: 0.00600791 / 166
+(Mouse) [4s932176241ns]: pos 506,661
+(FrameTime) [4s938355448ns]: 0.006205559 / 161
+(Mouse) [4s938355448ns]: pos 506,660
+(FrameTime) [4s945060692ns]: 0.006225109 / 160
+(FrameTime) [4s951042930ns]: 0.006667137 / 149
+(FrameTime) [4s957143280ns]: 0.006049633 / 165
+(Mouse) [4s957143280ns]: pos 506,659
+(FrameTime) [4s962736669ns]: 0.0059707165 / 167
+(Mouse) [4s962736669ns]: pos 506,658
+(FrameTime) [4s968997940ns]: 0.0058529377 / 170
+(FrameTime) [4s974426390ns]: 0.0060606003 / 165
+(FrameTime) [4s980817595ns]: 0.0053699017 / 186
+(Mouse) [4s980817595ns]: pos 506,657
+(FrameTime) [4s986718911ns]: 0.0065710545 / 152
+(FrameTime) [4s992649142ns]: 0.0057160854 / 174
+(FrameTime) [4s998691452ns]: 0.005932808 / 168
+(FrameTime) [5s4833971ns]: 0.0060532093 / 165
+(FrameTime) [5s10826689ns]: 0.006134987 / 162
+(FrameTime) [5s17209488ns]: 0.0059924126 / 166
+(FrameTime) [5s22952097ns]: 0.006382227 / 156
+(FrameTime) [5s29024554ns]: 0.005740881 / 174
+(FrameTime) [5s35149520ns]: 0.006072283 / 164
+(FrameTime) [5s41126137ns]: 0.006636858 / 150
+(FrameTime) [5s47265941ns]: 0.0059816837 / 167
+(FrameTime) [5s53281141ns]: 0.006142378 / 162
+(FrameTime) [5s59498630ns]: 0.006029606 / 165
+(FrameTime) [5s65499814ns]: 0.0061302185 / 163
+(FrameTime) [5s72011214ns]: 0.0059974194 / 166
+(FrameTime) [5s78053424ns]: 0.006594658 / 151
+(FrameTime) [5s84044389ns]: 0.0057411194 / 174
+(FrameTime) [5s90215211ns]: 0.005968809 / 167

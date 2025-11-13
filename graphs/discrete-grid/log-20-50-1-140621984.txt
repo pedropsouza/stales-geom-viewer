@@ -1,0 +1,1 @@
+(Timing) [0s2877416ns]: recalculating the bot paths took 0s2512632ns for 20 bots on a grid with 100

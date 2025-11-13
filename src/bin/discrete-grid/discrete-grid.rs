@@ -18,6 +18,7 @@ use std::{
     iter::{self, Iterator},
     time::Instant,
     cell::RefCell,
+    env,
 };
 
 mod bot;
@@ -93,7 +94,7 @@ impl Default for State {
         use chrono;
         let objects = GenMap::<Object>::with_capacity(1000);
         let cur_time = chrono::Local::now();
-        let log_name = format!("./log-{}-{}-{}.txt", cur_time.hour(), cur_time.minute(), cur_time.second());
+        let log_name = format!("./log-{}-{}-{}-{}.txt", cur_time.hour(), cur_time.minute(), cur_time.second(), cur_time.nanosecond());
         Self {
             objects: objects,
             clear_color: BLACK,
@@ -179,6 +180,10 @@ async fn main() {
         .init().unwrap();
     }
 
+    let args: Vec<String> = env::args().collect();
+    let grid_dims = (args.get(1).map_or(30, |x| x.parse::<usize>().unwrap()), args.get(2).map_or(30, |x| x.parse::<usize>().unwrap()));
+    let bot_count = args.get(3).map_or(10, |x| x.parse::<usize>().unwrap());
+
     let log_line = |state: &mut State, time: &std::time::Duration, tag: LogTag, msg: &str| {
         let secs = time.as_secs();
         let nanosecs = time.subsec_nanos();
@@ -192,8 +197,7 @@ async fn main() {
                 Point::new(WIDTH as f64/8.0, HEIGHT as f64/8.0),
                 Point::new(WIDTH as f64 * 7.0/8.0, HEIGHT as f64 * 7.0/8.0),
                 WHITE,
-                (30, 30)
-            )));
+                grid_dims)));
         state.grids.push(grid);
     }
 
@@ -201,7 +205,7 @@ async fn main() {
         let mut state = state.write().unwrap();
         if let Object::GridObj(grid) = state.objects.get(state.grids[0]).unwrap() {
             let mut bots = vec![];
-            for _ in 0..50 {
+            for _ in 0..bot_count {
                 bots.push(Bot::random_inside(grid));
             }
             for bot in bots {
@@ -213,13 +217,38 @@ async fn main() {
 
     let mut state = state.write().unwrap();
 
-    { // calculate initial convex hull with timing
-        let before = Instant::now();
-        let after = Instant::now();
+    {
+        let tick_time = Instant::now().duration_since(state.startup);
 
-        // let d = after - before;
+        let log_line = |state: &mut State, tag: LogTag, msg: &str| {
+            log_line(state, &tick_time, tag, msg);
+        };
+
+
+        let before = Instant::now();
+
+        let mut cell_count = 0;
+        let mut bot_count = 0;
+        let grid_handle = state.grids[0];
+        let bots = state.bots.clone();
+        if let Object::GridObj(grid) = state.objects.get(grid_handle).unwrap() {
+            bot_count = bots.len();
+            cell_count = grid.size().0 * grid.size().1;
+            for bot in bots {
+                if let Object::BotObj(bot) = state.objects.get(bot).unwrap() {
+                    bot.borrow_mut().recalc_path(grid);
+                }
+            }
+        }
+
+        let after = Instant::now();
+        let d = after - before;
+        log_line(&mut state, LogTag::Timing,
+                 &format!("recalculating the bot paths took {}s{}ns for {bot_count} bots on a grid with {cell_count}",
+                          d.as_secs(), d.subsec_nanos()));
+
     }
-        
+
     loop {
         let tick_time = Instant::now().duration_since(state.startup);
 
