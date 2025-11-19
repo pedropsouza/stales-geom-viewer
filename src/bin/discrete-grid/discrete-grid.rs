@@ -23,8 +23,10 @@ use std::{
 
 mod bot;
 mod grid;
+mod obstacle;
 use bot::Bot;
 use grid::Grid;
+use obstacle::Factory;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum DrawingState {
@@ -197,7 +199,11 @@ async fn main() {
                 Point::new(WIDTH as f64/8.0, HEIGHT as f64/8.0),
                 Point::new(WIDTH as f64 * 7.0/8.0, HEIGHT as f64 * 7.0/8.0),
                 WHITE,
-                grid_dims)));
+                grid_dims,
+                vec![
+                    (20, Box::new(obstacle::factories::RandomBoulder::new())),
+                ]
+            )));
         state.grids.push(grid);
     }
 
@@ -303,12 +309,18 @@ async fn main() {
             };
 
             let obstacle_paint = |grid: &mut Grid, idx: usize| {
-                grid.array[idx] = true;
+                match obstacle::factories::Wall::new(idx).new_object(grid) {
+                    Ok(obstacle) => { grid.push_obstacle(obstacle); },
+                    Err(_e) => {},
+                }
                 idx
             };
             
             let obstacle_erase = |grid: &mut Grid, idx: usize| {
-                grid.array[idx] = false;
+                match grid.array[idx] {
+                    Some(idx) => { grid.remove_obstacle(idx); },
+                    None => (),
+                }
                 idx
             };
 

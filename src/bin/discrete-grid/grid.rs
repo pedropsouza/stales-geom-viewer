@@ -5,12 +5,14 @@ use stales_geom_viewer::{
 };
 use euclid::default::Vector2D;
 use macroquad::prelude::*;
+use crate::obstacle;
 
 #[derive(Debug)]
 pub struct Grid {
     pub topleft: Point,
     pub botright: Point,
-    pub array: Vec<bool>,
+    pub array: Vec<Option<usize>>,
+    obstacles: Vec<Box<dyn obstacle::Obstacle>>,
     size: (usize, usize),
     strides: (f64, f64),
     verts: Vec<Vertex>,
@@ -18,7 +20,7 @@ pub struct Grid {
 }
 
 impl Grid {
-    pub fn new(topleft: Point, botright: Point, clr: Color, size: (usize, usize)) -> Self {
+    pub fn new(topleft: Point, botright: Point, clr: Color, size: (usize, usize), obstacle_factories: Vec<(usize, Box<dyn obstacle::Factory>)>) -> Self {
         let mut verts = Vec::with_capacity(size.0*2 + size.1*2 + 2);
         let deltas = (botright.x() - topleft.x(), botright.y() - topleft.y());
         let strides = (deltas.0/(size.0 as f64), deltas.1/(size.1 as f64));
@@ -37,11 +39,21 @@ impl Grid {
             verts.push(Point::new(x2,y));
         }
 
-        Self {
+        let mut grid = Self {
             topleft, botright, clr, size, strides,
             verts: verts.into_iter().map(|p| Vertex::new(p.x() as f32, p.y() as f32, None)).collect(),
-            array: [false].into_iter().cycle().take(size.0*size.1).collect(),
+            array: [None].into_iter().cycle().take(size.0*size.1).collect(),
+            obstacles: vec![],
+        };
+
+        for (count, ref mut factory) in obstacle_factories {
+            for _ in 0..count {
+                let obstacle = factory.new_object(&grid).unwrap();
+                grid.push_obstacle(obstacle);
+            }
         }
+
+        grid
     }
 
     pub fn quantize_xy(&self, x: f64, y: f64) -> Option<(usize, usize)> {
@@ -78,7 +90,7 @@ impl Grid {
         } else { None }
     }
     pub fn probe_xy(&self, x: f64, y: f64) -> Option<bool> {
-        self.xy_idx(x,y).map(|idx| self.array[idx])
+        self.xy_idx(x,y).map(|idx| self.array[idx].is_some())
     }
 
     pub fn idx_box(&self, idx: usize) -> Option<(Point, Point)> {
@@ -119,7 +131,7 @@ impl Grid {
             if self.chebyshev_distance(idx, cur) != 1 { return None; }
             self.array
                 .get(cur as usize)
-                .and_then(|occupied| Some((cur, *occupied)))
+                .and_then(|occupied| Some((cur, occupied.is_some())))
         }).collect()
     }
 
@@ -136,6 +148,25 @@ impl Grid {
     }
 
     pub fn size(&self) -> (usize, usize) { self.size }
+
+    pub fn push_obstacle(&mut self, obstacle: Box<dyn obstacle::Obstacle>) -> usize {
+        let l = self.obstacles.len();
+        for cell in obstacle.cells() {
+            self.array[*cell] = Some(l);
+        }
+        self.obstacles.push(obstacle);
+        l
+    }
+
+    pub fn remove_obstacle(&mut self, idx: usize) -> Box<dyn obstacle::Obstacle> {
+        let mut obstacle = Box::new(obstacle::NullObstacle) as Box<dyn obstacle::Obstacle>;
+        std::mem::swap(&mut self.obstacles[idx], &mut obstacle);
+        for cell in obstacle.cells() {
+            self.array[*cell] = None;
+        };
+        obstacle
+        // TODO: drop these null obstacle boxes
+    }
 }
 
 impl Draw for Grid {
@@ -146,7 +177,7 @@ impl Draw for Grid {
                       1.0, self.clr);
         }
 
-        for (idx, _) in self.array.iter().enumerate().filter(|(_,x)| **x) {
+        for (idx, _) in self.array.iter().enumerate().filter(|(_,x)| x.is_some()) {
             if let Some((topl,botr)) = self.idx_box(idx) {
                 let s = botr - topl;
                 let (w,h) = (s.x() as f32, s.y() as f32);
