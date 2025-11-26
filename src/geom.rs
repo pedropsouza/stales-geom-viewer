@@ -1,6 +1,5 @@
 use euclid::{*, default::Vector2D, default::Box2D, vec2};
 use macroquad::prelude::{*};
-use ::rand::seq::IteratorRandom;
 use crate::{
     point::Point,
     common_traits::*,

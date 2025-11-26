@@ -1,5 +1,5 @@
 use chrono::Timelike;
-use macroquad::{miniquad::native::linux_x11::libx11::Display, prelude::*};
+use macroquad::prelude::*;
 use genmap::GenMap;
 
 use stales_geom_viewer::{
@@ -11,7 +11,7 @@ use stales_geom_viewer::{
 use euclid::default::Vector2D;
 
 use std::{
-    cmp::{Ord, Ordering}, collections::HashMap, default::Default, fmt::Debug, fs::File, io::Write, iter::{self, Iterator}, time::Instant
+    default::Default, fmt::Debug, io::Write, iter::{self, Iterator}, time::Instant
 };
 
 type Color = macroquad::color::Color;

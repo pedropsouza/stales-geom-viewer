@@ -4,11 +4,10 @@ use std::{
     iter::Iterator,
     ops::Range,
     io::Write,
-    fmt::Display,
 };
 
 use stales_geom_viewer::common_traits::*;
-use euclid::{default::{Box2D, Vector2D}, *};
+use euclid::{default::Vector2D, *};
 
 type Color = macroquad::color::Color;
 

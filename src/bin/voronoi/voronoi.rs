@@ -1,4 +1,4 @@
-use macroquad::{miniquad::native::linux_x11::libx11::Display, prelude::*};
+use macroquad::prelude::*;
 use genmap::GenMap;
 
 pub mod event;
@@ -6,12 +6,12 @@ pub mod beachline;
 pub mod dcel;
 
 use event::*;
-use beachline::{BeachItem, BeachNode, Beachline, Breakpoint};
-use petgraph::{graph::node_index, visit::{EdgeRef, GraphProp, IntoEdgeReferences, IntoNodeReferences, NodeIndexable}};
+use beachline::{BeachItem, Beachline, Breakpoint};
+use petgraph::{graph::node_index, visit::{EdgeRef, IntoNodeReferences}};
 use stales_geom_viewer::point::Point;
 
 use std::{
-    cmp::{Ord, Ordering}, collections::HashMap, default::Default, fmt::Debug, fs::File, io::Write, iter::Iterator, time::Instant
+    cmp::{Ord, Ordering}, collections::HashMap, default::Default, fmt::Debug, io::Write, iter::Iterator, time::Instant
 };
 
 use stales_geom_viewer::{
@@ -494,11 +494,11 @@ async fn main() {
         }
     }
         
-    let mut instant_voronoi = move |state: std::rc::Rc<std::sync::RwLock<State>>| async move {
+    let instant_voronoi = move |state: std::rc::Rc<std::sync::RwLock<State>>| async move {
         let mut state = state.write().unwrap();
         let mut voronoi_state = Algo::new(&vec![]);
         let mut voronoi_calc = |state: &State| {
-            let mut input_verts = state.all_elements().map(|(_,elem)| {
+            let input_verts = state.all_elements().map(|(_,elem)| {
                 let center = elem.compute_aabb().center();
                 Point::new(center.x as f64, center.y as f64)
             }).collect();
@@ -531,7 +531,7 @@ async fn main() {
                 (t.as_secs(), t.subsec_nanos())
             };
 
-            let mut log_line = |state: &mut State, tag: LogTag, msg: &str| {
+            let log_line = |state: &mut State, tag: LogTag, msg: &str| {
                 writeln!(&mut state.logfile, "({tag:?}) [{}s{}ns]: {msg}", tick_time.0, tick_time.1).expect("couldn't write log line")
             };
 

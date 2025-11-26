@@ -25,7 +25,7 @@ mod bot;
 mod grid;
 mod obstacle;
 use bot::Bot;
-use grid::Grid;
+use grid::{Grid, SquareGrid, HexGrid};
 use obstacle::Factory;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -43,7 +43,7 @@ enum Object {
     CircleObj(geom::Circle),
     LineObj(geom::Line2D),
     PolyObj(geom::Polygon),
-    GridObj(Grid),
+    GridObj(Box<dyn Grid>),
     BotObj(RefCell<Bot>),
 }
 
@@ -85,14 +85,14 @@ struct State {
     pub prev_mouse_pos: (f32, f32),
     pub logfile: std::fs::File,
 
-    pub grids: Vec<genmap::Handle>,
     pub input_mode: InputMode,
     pub sel_cell: Option<usize>,
     pub bots: Vec<genmap::Handle>,
+    pub grid: Box<dyn Grid>,
 }
 
-impl Default for State {
-    fn default() -> Self {
+impl State {
+    fn new(grid: Box<dyn Grid>) -> Self {
         use chrono;
         let objects = GenMap::<Object>::with_capacity(1000);
         let cur_time = chrono::Local::now();
@@ -103,15 +103,14 @@ impl Default for State {
             startup: Instant::now(),
             prev_mouse_pos: mouse_position(),
             logfile: std::fs::File::create(log_name).expect("can't create \"./log.txt\" log file!"),
-            grids: vec![],
             input_mode: InputMode::Obstacles(DrawingState::Ground),
             sel_cell: None,
             bots: vec![],
+            grid,
         }
     }
-}
 
-impl State {
+
     fn add_line(&mut self, l: geom::Line2D) -> genmap::Handle {
         self.objects.insert(Object::LineObj(l))
 
@@ -130,7 +129,8 @@ impl State {
                     Object::CircleObj(c) => Some(c as &dyn Element),
                     Object::LineObj(l) => Some(l as &dyn Element),
                     Object::PolyObj(_p) => None,
-                    Object::GridObj(g) => Some(g as &dyn Element),
+                    //Object::GridObj(ref g) => Some(g as &dyn Element),
+                    Object::GridObj(_g) => None,
                     Object::BotObj(_b) => None, //Some(b.into_inner().clone() as &dyn Element),
                 }).map(|elem| (x, elem))
             })
@@ -172,7 +172,23 @@ async fn main() {
     const WIDTH: f32 = 1800.0;
     const HEIGHT: f32 = 1000.0;
     request_new_screen_size(WIDTH, HEIGHT);
-    let state = std::rc::Rc::new(std::sync::RwLock::new(State::default()));
+
+    let args: Vec<String> = env::args().collect();
+    let grid_dims = (args.get(1).map_or(30, |x| x.parse::<usize>().unwrap()), args.get(2).map_or(30, |x| x.parse::<usize>().unwrap()));
+    let bot_count = args.get(3).map_or(10, |x| x.parse::<usize>().unwrap());
+
+    let state = {
+        let grid = HexGrid::new(
+            Point::new(WIDTH as f64/8.0, HEIGHT as f64/8.0),
+            Point::new(WIDTH as f64 * 7.0/8.0, HEIGHT as f64 * 7.0/8.0),
+            WHITE,
+            grid_dims,
+            vec![
+                (02, Box::new(obstacle::factories::RandomBoulder::new())),
+            ]
+        );
+        std::rc::Rc::new(std::sync::RwLock::new(State::new(Box::from(grid))))
+    };
 
     #[cfg(debug_assertions)]
     {
@@ -182,9 +198,6 @@ async fn main() {
         .init().unwrap();
     }
 
-    let args: Vec<String> = env::args().collect();
-    let grid_dims = (args.get(1).map_or(30, |x| x.parse::<usize>().unwrap()), args.get(2).map_or(30, |x| x.parse::<usize>().unwrap()));
-    let bot_count = args.get(3).map_or(10, |x| x.parse::<usize>().unwrap());
 
     let log_line = |state: &mut State, time: &std::time::Duration, tag: LogTag, msg: &str| {
         let secs = time.as_secs();
@@ -194,30 +207,14 @@ async fn main() {
     
     {
         let mut state = state.write().unwrap();
-        let grid = state.objects.insert(Object::GridObj(
-            Grid::new(
-                Point::new(WIDTH as f64/8.0, HEIGHT as f64/8.0),
-                Point::new(WIDTH as f64 * 7.0/8.0, HEIGHT as f64 * 7.0/8.0),
-                WHITE,
-                grid_dims,
-                vec![
-                    (20, Box::new(obstacle::factories::RandomBoulder::new())),
-                ]
-            )));
-        state.grids.push(grid);
-    }
-
-    {
-        let mut state = state.write().unwrap();
-        if let Object::GridObj(grid) = state.objects.get(state.grids[0]).unwrap() {
-            let mut bots = vec![];
-            for _ in 0..bot_count {
-                bots.push(Bot::random_inside(grid));
-            }
-            for bot in bots {
-                let bot_handle = state.objects.insert(Object::BotObj(RefCell::new(bot)));
-                state.bots.push(bot_handle);
-            }
+        let mut bots = vec![];
+        for _ in 0..bot_count {
+            use bot::PathfinderDecorator;
+            bots.push(Bot::random_inside(&state.grid, bot::DebugPathFinder::wrap(Box::new(bot::BasePathfinder {}))));
+        }
+        for bot in bots {
+            let bot_handle = state.objects.insert(Object::BotObj(RefCell::new(bot)));
+            state.bots.push(bot_handle);
         }
     }
 
@@ -233,17 +230,12 @@ async fn main() {
 
         let before = Instant::now();
 
-        let mut cell_count = 0;
-        let mut bot_count = 0;
-        let grid_handle = state.grids[0];
         let bots = state.bots.clone();
-        if let Object::GridObj(grid) = state.objects.get(grid_handle).unwrap() {
-            bot_count = bots.len();
-            cell_count = grid.size().0 * grid.size().1;
-            for bot in bots {
-                if let Object::BotObj(bot) = state.objects.get(bot).unwrap() {
-                    bot.borrow_mut().recalc_path(grid);
-                }
+        let bot_count = bots.len();
+        let cell_count = state.grid.size().0 * state.grid.size().1;
+        for bot in bots {
+            if let Object::BotObj(bot) = state.objects.get(bot).unwrap() {
+                bot.borrow_mut().recalc_path(&state.grid);
             }
         }
 
@@ -272,6 +264,13 @@ async fn main() {
             object.draw();
         }
 
+        {
+            state.grid.draw();
+            let a = (WIDTH as f32/8.0, HEIGHT as f32/8.0);
+            let b = (WIDTH as f32 * 7.0/8.0, HEIGHT as f32 * 7.0/8.0);
+            draw_rectangle_lines(a.0, a.1, b.0-a.0, b.1-a.1, 2.0, WHITE);
+        }
+
         let mut recalc = false;
         { // input handling
             let mouse_pos = mouse_position();
@@ -280,7 +279,7 @@ async fn main() {
                 state.prev_mouse_pos = mouse_pos;
             }
 
-            let grid_interact = |mut state: &mut State, mut grid_func: Box<dyn FnMut(&mut Grid, usize) -> usize>| -> Option<usize> {
+            let grid_interact = |mut state: &mut State, mut grid_func: Box<dyn FnMut(&mut dyn Grid, usize) -> usize>| -> Option<usize> {
                 let mut hit_elem = None;
                 for (handle,element) in state.all_elements() {
                     if element.contains_point(&Vector2D::new(mouse_pos.0, mouse_pos.1)) {
@@ -291,24 +290,14 @@ async fn main() {
                 
                 if let Some(elem) = hit_elem {
                     log_line(&mut state, LogTag::Select, &format!("selected {:?}", elem));
-
-                    let grid_handle = state.grids.iter().find(|x| **x == elem).cloned();
-                    if let Some(grid_handle) = grid_handle {
-                        let grid = state.objects.get_mut(grid_handle);
-                        if let Some(Object::GridObj(ref mut grid)) = grid {
-                            return match grid.xy_idx(mouse_pos.0 as f64, mouse_pos.1 as f64) {
-                                Some(idx) => Some(grid_func(grid, idx)),
-                                None => None,
-                            }
-                        }
-                        else { unreachable!(); }
-                    } else { None }
-                } else {
                     None
+                } else {
+                    // grid is no longer a registered element
+                    state.grid.xy_idx(mouse_pos.0 as f64, mouse_pos.1 as f64).map(|idx| grid_func(&mut *state.grid, idx))
                 }
             };
 
-            let obstacle_paint = |grid: &mut Grid, idx: usize| {
+            let obstacle_paint = |grid: &mut dyn Grid, idx: usize| {
                 match obstacle::factories::Wall::new(idx).new_object(grid) {
                     Ok(obstacle) => { grid.push_obstacle(obstacle); },
                     Err(_e) => {},
@@ -316,10 +305,9 @@ async fn main() {
                 idx
             };
             
-            let obstacle_erase = |grid: &mut Grid, idx: usize| {
-                match grid.array[idx] {
-                    Some(idx) => { grid.remove_obstacle(idx); },
-                    None => (),
+            let obstacle_erase = |grid: &mut dyn Grid, idx: usize| {
+                if let Some(oidx) = grid.obstacle_idx(idx) {
+                    grid.remove_obstacle(oidx);
                 }
                 idx
             };
@@ -382,17 +370,12 @@ async fn main() {
                     if recalc {
                         let before = Instant::now();
 
-                        let mut cell_count = 0;
-                        let mut bot_count = 0;
-                        let grid_handle = state.grids[0];
                         let bots = state.bots.clone();
-                        if let Object::GridObj(grid) = state.objects.get(grid_handle).unwrap() {
-                            bot_count = bots.len();
-                            cell_count = grid.size().0 * grid.size().1;
-                            for bot in bots {
-                                if let Object::BotObj(bot) = state.objects.get(bot).unwrap() {
-                                    bot.borrow_mut().recalc_path(grid);
-                                }
+                        let bot_count = bots.len();
+                        let cell_count = state.grid.size().0 * state.grid.size().1;
+                        for bot in bots {
+                            if let Object::BotObj(bot) = state.objects.get(bot).unwrap() {
+                                bot.borrow_mut().recalc_path(&state.grid);
                             }
                         }
 
@@ -408,14 +391,15 @@ async fn main() {
                     match origin_opt {
                         None => {
                             if is_mouse_button_released(MouseButton::Left) {
-                                grid_interact(&mut state, Box::new(|_grid: &mut Grid, idx: usize| {
+                                grid_interact(&mut state, Box::new(|_grid: &mut dyn Grid, idx: usize| {
                                     *origin_opt = Some(idx);
                                     idx
                                 }));
                             }
                         },
                         Some(origin_idx) => {
-                            if let Object::GridObj(grid) = state.objects.get(state.grids[0]).unwrap() {
+                            {
+                                let grid = &state.grid;
                                 let mut pos = grid.idx_xy(*origin_idx).unwrap();
                                 pos.0 += grid.cell_dims().0/2.0;
                                 pos.1 += grid.cell_dims().1/2.0;
@@ -423,7 +407,7 @@ async fn main() {
                                 draw_circle_lines(pos.0 as f32, pos.1 as f32, (grid.cell_dims().0.min(grid.cell_dims().1)/2.0) as f32, 2.0, WHITE);
                             }
                             if is_mouse_button_released(MouseButton::Left) {
-                                grid_interact(&mut state, Box::new(|_grid: &mut Grid, idx: usize| {
+                                grid_interact(&mut state, Box::new(|_grid: &mut dyn Grid, idx: usize| {
                                     idx
                                 })).inspect(|dest_idx| {
                                     bot_creation_info = Some((*origin_idx, *dest_idx));
@@ -445,13 +429,11 @@ async fn main() {
             state.input_mode = cur_mode;
 
             if let Some((origin_idx, dest_idx)) = bot_creation_info {
-                let grid_handle = state.grids[0];
-                let grid = state.objects.get_mut(grid_handle);
-                if let Some(Object::GridObj(ref mut grid)) = grid {
-                    let bot = Bot::new(&grid, origin_idx, dest_idx, random_color());
-                    let bot_handle = state.objects.insert(Object::BotObj(RefCell::new(bot)));
-                    state.bots.push(bot_handle);
-                }
+                use bot::PathfinderDecorator;
+                let pathfinder = bot::DebugPathFinder::wrap(Box::new(bot::BasePathfinder {}));
+                let bot = Bot::new(&state.grid, pathfinder, origin_idx, dest_idx, random_color());
+                let bot_handle = state.objects.insert(Object::BotObj(RefCell::new(bot)));
+                state.bots.push(bot_handle);
             }
         }
 

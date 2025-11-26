@@ -38,7 +38,7 @@ pub enum FactoryError {
 pub type FactoryResult = Result<Box<dyn Obstacle>, FactoryError>;
 
 pub trait Factory {
-    fn new_object(&mut self, grid: &Grid) -> FactoryResult;
+    fn new_object(&mut self, grid: &dyn Grid) -> FactoryResult;
 }
 
 #[derive(Debug)]
@@ -83,7 +83,7 @@ pub struct Wall {
 }
 
 impl Wall {
-    pub fn new(grid: &Grid, start: usize, end: usize) -> FactoryResult {
+    pub fn new(grid: &dyn Grid, start: usize, end: usize) -> FactoryResult {
         let start_xy = grid.idx_xy(start);
         let end_xy = grid.idx_xy(end);
 
@@ -154,10 +154,10 @@ pub mod factories {
     
     impl RandomBoulder {
         pub fn new() -> Self { Self() }
-        fn new_object_inner(&mut self, grid: &Grid, depth: usize) -> FactoryResult {
+        fn new_object_inner(&mut self, grid: &dyn Grid, depth: usize) -> FactoryResult {
             use super::Boulder;
             let idx = random_range(0..grid.size().0*grid.size().1);
-            if let Some(_) = grid.array[idx] {
+            if let Some(_) = grid.idx(idx) {
                 if depth > 10 { Err(FactoryError::Occluded(vec![idx])) }
                 else { Self::new_object_inner(self, grid, depth+1) }
             }
@@ -168,7 +168,7 @@ pub mod factories {
     }
     
     impl Factory for RandomBoulder {
-        fn new_object(&mut self, grid: &Grid) -> FactoryResult {
+        fn new_object(&mut self, grid: &dyn Grid) -> FactoryResult {
             self.new_object_inner(grid, 0)
         }
     }
@@ -181,7 +181,7 @@ pub mod factories {
     }
     
     impl Factory for Wall {
-        fn new_object(&mut self, grid: &Grid) -> FactoryResult {
+        fn new_object(&mut self, grid: &dyn Grid) -> FactoryResult {
             use super::Wall;
             Wall::new(grid, self.0, self.0)
         }
