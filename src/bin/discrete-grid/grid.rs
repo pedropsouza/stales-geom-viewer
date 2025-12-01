@@ -169,7 +169,6 @@ impl HexGrid {
             4.0*deltas.0/(3.0*((size.0 as f64) + 1.0/3.0)),
             deltas.1/((size.1 as f64)),
         );
-        println!("hex sizes = {cell_wh:?}");
         let strides = (
             3.0/4.0 * cell_wh.0,
             cell_wh.1,
@@ -195,12 +194,6 @@ impl HexGrid {
                                 0.0
                             };
                         verts.push(Point::new(x,y));
-
-                        if j < size.1*3 {
-                            println!("({i}, {j}) #{k} = ({x},{y})");
-                        } else {
-                            println!("({i}, {j}) #{k} = ({x},{y})");
-                        }
                     }
                 }
             }
@@ -376,8 +369,10 @@ impl Draw for HexGrid {
         for idx in 0..self.size.0*self.size.1 {
             let pos = self.idx_xy(idx);
             let pos = pos.unwrap();
-            let r = if let Some(_) = self.array[idx] { 10.0 } else { 3.0 };
-            draw_circle((pos.0 + self.cell_wh.0/2.0) as f32, (pos.1 + self.cell_wh.1/2.0) as f32, r, self.clr);
+            let r = self.array[idx].map(|_| 10.0);
+            if let Some(r) = r {
+                draw_circle((pos.0 + self.cell_wh.0/2.0) as f32, (pos.1 + self.cell_wh.1/2.0) as f32, r, self.clr);
+            };
         }
     }
 

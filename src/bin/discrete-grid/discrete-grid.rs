@@ -366,12 +366,7 @@ async fn main() {
             object.draw();
         }
 
-        {
-            state.grid.draw();
-            let a = (WIDTH as f32/8.0, HEIGHT as f32/8.0);
-            let b = (WIDTH as f32 * 7.0/8.0, HEIGHT as f32 * 7.0/8.0);
-            draw_rectangle_lines(a.0, a.1, b.0-a.0, b.1-a.1, 2.0, WHITE);
-        }
+        state.grid.draw();
 
         { // input handling
 
@@ -532,7 +527,7 @@ async fn main() {
         }
 
 
-        draw_text(&format!("Input mode: {:?}", state.input_mode), 20.0, 20.0, 30.0, DARKGRAY);
+        draw_text(&format!("Input mode: {:?}\ntick: {}", state.input_mode, state.tick), 20.0, 20.0, 30.0, DARKGRAY);
 
         if is_key_released(KeyCode::R) {
             println!("{}", state.text_digest())
