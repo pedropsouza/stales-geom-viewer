@@ -4,7 +4,7 @@ use stales_geom_viewer::{
 };
 use euclid::default::Vector2D;
 use macroquad::prelude::*;
-use crate::{State, Object, grid::Grid};
+use crate::{State, Object, grid::ObservableGrid};
 use std::{collections::{ HashMap, HashSet }, sync::RwLock};
 use std::rc::Rc;
 use dyn_clone::DynClone;
@@ -37,7 +37,7 @@ impl Clone for Bot {
 }
 
 impl Bot {
-    pub fn new(grid: &Box<dyn Grid>, mut pathfinder: Box<dyn Pathfinder>, origin_idx: usize, dest_idx: usize, clr: Color) -> Self {
+    pub fn new(grid: &Box<dyn ObservableGrid>, mut pathfinder: Box<dyn Pathfinder>, origin_idx: usize, dest_idx: usize, clr: Color) -> Self {
         let cdims = grid.cell_dims();
         let radius = cdims.0.min(cdims.1)/2.0;
         let pos_xy = grid.idx_xy(origin_idx).unwrap();
@@ -49,14 +49,14 @@ impl Bot {
         }
     }
 
-    pub fn random_inside(grid: &Box<dyn Grid>, pathfinder: Box<dyn Pathfinder>) -> Self {
+    pub fn random_inside(grid: &Box<dyn ObservableGrid>, pathfinder: Box<dyn Pathfinder>) -> Self {
         let origin_idx = random_range(0..grid.size().0*grid.size().1);
         let dest_idx = random_range(0..grid.size().0*grid.size().1);
         let clr = random_color();
         Self::new(grid, pathfinder, origin_idx, dest_idx, clr)
     }
 
-        pub fn recalc_path(&mut self, grid: &Box<dyn Grid>) {
+        pub fn recalc_path(&mut self, grid: &Box<dyn ObservableGrid>) {
         self.path = self.pathfinder.pathfind(grid, self.origin_idx, self.dest_idx);
     }
 }
@@ -112,7 +112,7 @@ impl Select for Bot {
 pub struct BasePathfinder {}
 
 pub trait Pathfinder: std::fmt::Debug + DynClone {
-    fn pathfind(&mut self, grid: &Box<dyn Grid>, from: usize, to: usize) -> Result<Vec<(usize, (f32,f32))>, String> {
+    fn pathfind(&mut self, grid: &Box<dyn ObservableGrid>, from: usize, to: usize) -> Result<Vec<(usize, (f32,f32))>, String> {
         let mut space: Vec<(usize, usize, Vec<usize>)> = vec![(from, 0usize, vec![from])];
         let mut needle = 0usize;
         let mut seen = HashSet::new();
@@ -166,7 +166,7 @@ pub trait PathfinderDecorator: Pathfinder {
 }
 
 impl Pathfinder for DebugPathFinder {
-    fn pathfind(&mut self, grid: &Box<dyn Grid>, from: usize, to: usize) -> Result<Vec<(usize, (f32,f32))>, String> {
+    fn pathfind(&mut self, grid: &Box<dyn ObservableGrid>, from: usize, to: usize) -> Result<Vec<(usize, (f32,f32))>, String> {
         let inner_res = self.0.pathfind(grid, from, to);
         if let Ok(path) = &inner_res {
             for place in path {

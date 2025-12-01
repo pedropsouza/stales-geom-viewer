@@ -17,8 +17,9 @@ mod bot;
 mod grid;
 mod obstacle;
 mod command;
+mod observer;
 use bot::Bot;
-use grid::{Grid, SquareGrid, HexGrid};
+use grid::{ObservableGrid, Grid, SquareGrid, HexGrid};
 use command::Command;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -142,12 +143,13 @@ pub struct State {
     pub input_mode: InputMode,
     pub sel_cell: Option<usize>,
     pub bots: Vec<genmap::Handle>,
-    pub grid: Box<dyn Grid>,
+    pub grid: Box<dyn ObservableGrid>,
     pub command_history: CommandHistory,
+    pub grid_recalc_signal: (std::sync::mpsc::Sender<()>, std::sync::mpsc::Receiver<()>),
 }
 
 impl State {
-    fn new(grid: Box<dyn Grid>) -> Self {
+    fn new(grid: Box<dyn ObservableGrid>) -> Self {
         use chrono;
         let objects = GenMap::<Object>::with_capacity(1000);
         let cur_time = chrono::Local::now();
@@ -163,6 +165,7 @@ impl State {
             bots: vec![],
             grid,
             command_history: CommandHistory::default(),
+            grid_recalc_signal: std::sync::mpsc::channel()
         }
     }
 
@@ -282,7 +285,9 @@ async fn main() {
 
     let args: Vec<String> = env::args().collect();
     let grid_dims = (args.get(1).map_or(30, |x| x.parse::<usize>().unwrap()), args.get(2).map_or(30, |x| x.parse::<usize>().unwrap()));
-    let bot_count = args.get(3).map_or(10, |x| x.parse::<usize>().unwrap());
+    let cell_count = grid_dims.0*grid_dims.1;
+    let bot_count = args.get(3).map_or(5.min(cell_count), |x| x.parse::<usize>().unwrap());
+    let obstacle_count = args.get(4).map_or(10.min(cell_count), |x| x.parse::<usize>().unwrap());
 
     let state = {
         let grid = HexGrid::new(
@@ -291,10 +296,10 @@ async fn main() {
             WHITE,
             grid_dims,
             vec![
-                (02, Box::new(obstacle::factories::RandomBoulder::new())),
+                (obstacle_count, Box::new(obstacle::factories::RandomBoulder::new())),
             ]
         );
-        std::rc::Rc::new(std::sync::RwLock::new(State::new(Box::from(grid))))
+        std::rc::Rc::new(std::sync::RwLock::new(State::new(Box::new(grid::ObservableGridDecorator::new(Box::new(grid))))))
     };
 
     #[cfg(debug_assertions)]
@@ -305,9 +310,6 @@ async fn main() {
         .init().unwrap();
     }
 
-
-    
-    
     {
         let mut state = state.write().unwrap();
         let mut bots = vec![];

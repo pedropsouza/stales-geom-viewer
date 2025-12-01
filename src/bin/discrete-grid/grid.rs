@@ -5,8 +5,105 @@ use stales_geom_viewer::{
 };
 use euclid::default::Vector2D;
 use macroquad::prelude::*;
-use crate::obstacle;
+use crate::{observer, obstacle};
+use crate::observer::{HasObserverList, Observable};
 use std::fmt::Debug;
+
+pub trait ObservableGrid: Grid + Observable {}
+
+#[derive(Debug)]
+pub struct ObservableGridDecorator {
+    grid: Box<dyn Grid>,
+    observers: observer::ObserverList,
+}
+
+impl ObservableGridDecorator {
+    pub fn new(grid: Box<dyn Grid>) -> Self {
+        Self { grid, observers: Default::default() }
+    }
+}
+
+impl ObservableGrid for ObservableGridDecorator {}
+
+impl Grid for ObservableGridDecorator {
+    fn xy(&self, x: f64, y: f64) -> Option<&Box<dyn obstacle::Obstacle>> {
+        self.grid.xy(x, y)
+    }
+
+    fn idx(&self, idx: usize) -> Option<&Box<dyn obstacle::Obstacle>> {
+        self.grid.idx(idx)
+    }
+
+    fn obstacle_idx(&self, idx: usize) -> Option<usize> {
+        self.grid.obstacle_idx(idx)
+    }
+
+    fn xy_idx(&self, x: f64, y: f64) -> Option<usize> {
+        self.grid.xy_idx(x, y)
+    }
+
+    fn idx_xy(&self, idx: usize) -> Option<(f64,f64)> {
+        self.grid.idx_xy(idx)
+    }
+
+    fn probe_xy(&self, x: f64, y: f64) -> Option<bool> {
+        self.grid.probe_xy(x, y)
+    }
+
+    fn cell_dims(&self) -> (f64, f64) {
+        self.grid.cell_dims()
+    }
+
+    fn neighbourhood(&self, idx: usize) -> Vec<(usize, bool)> {
+        self.grid.neighbourhood(idx)
+    }
+
+    fn size(&self) -> (usize, usize) {
+        self.grid.size()
+    }
+
+    fn push_obstacle(&mut self, obstacle: Box<dyn obstacle::Obstacle>) -> usize {
+        let tmp = self.grid.push_obstacle(obstacle);
+        self.invalidate_for_observers();
+        tmp
+    }
+
+    fn remove_obstacle(&mut self, idx: usize) -> Box<dyn obstacle::Obstacle> {
+        let tmp = self.grid.remove_obstacle(idx);
+        self.invalidate_for_observers();
+        tmp
+    }
+}
+
+impl Select for ObservableGridDecorator {
+    fn compute_aabb(&self) -> euclid::default::Box2D<f32> {
+        self.grid.compute_aabb()
+    }
+
+    fn sample_signed_distance_field(&self, global_sample_point: &Vector2D<f32>) -> f32 {
+        self.grid.sample_signed_distance_field(global_sample_point)
+    }
+}
+
+impl Draw for ObservableGridDecorator {
+    fn draw(&self) {
+        self.grid.draw();
+    }
+
+    fn vertices(&self) -> Vec<Vertex> {
+        self.grid.vertices()
+    }
+}
+
+impl HasObserverList for ObservableGridDecorator {
+    fn get_observer_list(&self) -> &observer::ObserverList {
+        &self.observers
+    }
+
+    fn get_mut_observer_list(&mut self) -> &mut observer::ObserverList {
+        &mut self.observers
+    }
+}
 
 pub trait Grid: Debug + Draw + Select + Element {
     fn xy(&self, x: f64, y: f64) -> Option<&Box<dyn obstacle::Obstacle>>;
