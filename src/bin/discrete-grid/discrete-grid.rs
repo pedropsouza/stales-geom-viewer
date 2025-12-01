@@ -67,8 +67,8 @@ impl Draw for Object {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InputMode {
     Obstacles(DrawingState),
-    Bots(Option<usize>),
-    Run((Instant, Instant)),
+    Bots(Option<usize>), // origin
+    Run,
 }
 
 struct CommandHistoryEntry {
@@ -140,6 +140,7 @@ pub struct State {
     pub prev_mouse_pos: (f32, f32),
     pub logfile: std::fs::File,
 
+    pub tick: usize,
     pub input_mode: InputMode,
     pub sel_cell: Option<usize>,
     pub bots: Vec<genmap::Handle>,
@@ -160,6 +161,7 @@ impl State {
             startup: Instant::now(),
             prev_mouse_pos: mouse_position(),
             logfile: std::fs::File::create(log_name).expect("can't create \"./log.txt\" log file!"),
+            tick: 0,
             input_mode: InputMode::Obstacles(DrawingState::Ground),
             sel_cell: None,
             bots: vec![],
@@ -438,10 +440,7 @@ async fn main() {
                         ),
                     (_, _, _, true, _, _) => InputMode::Obstacles(DrawingState::Ground),
                     (_, _, _, _, true, _) => InputMode::Bots(None),
-                    (_, _, _, _, _, true) => {
-                        let now = Instant::now();
-                        InputMode::Run((now, now))
-                    },
+                    (_, _, _, _, _, true) => InputMode::Run,
                     (prev, _,_,_,_,_) => prev,
                 };
             let mut bot_creation_info: Option<(usize, usize)> = None;
@@ -499,11 +498,13 @@ async fn main() {
                         },
                     }
                 },
-                InputMode::Run(ref mut tick) => {
-                    tick.1 = Instant::now();
-                    for bot_handle in &state.bots {
-                        if let Object::BotObj(bot) = state.objects.get(*bot_handle).unwrap() {
-                            bot.borrow_mut().anim_step = tick.1.duration_since(tick.0).as_secs_f32();
+                InputMode::Run => {
+                    if is_key_released(KeyCode::Space) {
+                        let mut command = command.write().unwrap();
+                        if is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift) {
+                            *command = Some(Box::new(command::StepBackwards::new()));
+                        } else {
+                            *command = Some(Box::new(command::StepForward::new()));
                         }
                     }
                 }

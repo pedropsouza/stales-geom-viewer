@@ -85,7 +85,13 @@ impl StepForward {
 
 impl Command<State> for StepForward {
     fn run(&self, state: &mut State) -> CommandResult<State> {
-        //state.tick++;
+        use crate::Object;
+        state.tick += 1;
+        for bot_handle in &state.bots {
+            if let Object::BotObj(bot) = state.objects.get(*bot_handle).unwrap() {
+                bot.borrow_mut().path_step = state.tick;
+            }
+        }
         Ok(Some(Box::new(StepBackwards {})))
     }
 }
@@ -101,7 +107,13 @@ impl StepBackwards {
 
 impl Command<State> for StepBackwards {
     fn run(&self, state: &mut State) -> CommandResult<State> {
-        //state.tick--;
+        use crate::Object;
+        state.tick = state.tick.saturating_sub(1);
+        for bot_handle in &state.bots {
+            if let Object::BotObj(bot) = state.objects.get(*bot_handle).unwrap() {
+                bot.borrow_mut().path_step = state.tick;
+            }
+        }
         Ok(Some(Box::new(StepForward {})))
     }
 }

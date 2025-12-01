@@ -16,7 +16,7 @@ pub struct Bot {
     pub origin_idx: usize,
     pub path: Result<Vec<(usize,(f32,f32))>, String>,
     pub pathfinder: Box<dyn Pathfinder>,
-    pub anim_step: f32,
+    pub path_step: usize,
     clr: Color,
     radius: f32,
 }
@@ -29,7 +29,7 @@ impl Clone for Bot {
             origin_idx: self.origin_idx.clone(),
             path: self.path.clone(),
             pathfinder: dyn_clone::clone_box(&*self.pathfinder),
-            anim_step: self.anim_step.clone(),
+            path_step: self.path_step.clone(),
             clr: self.clr.clone(),
             radius: self.radius.clone(),
         }
@@ -45,7 +45,7 @@ impl Bot {
         let path = pathfinder.pathfind(grid, origin_idx, dest_idx);
 
         Self {
-            pos, origin_idx, dest_idx, clr, radius: radius as f32, path, pathfinder, anim_step: 0.0,
+            pos, origin_idx, dest_idx, clr, radius: radius as f32, path, pathfinder, path_step: 0,
         }
     }
 
@@ -63,19 +63,15 @@ impl Bot {
 
 impl Draw for Bot {
     fn draw(&self) {
-        let (a,b) = match &self.path {
+        let (x,y) = match &self.path {
             Ok(path) => {
-                let a_i = (self.anim_step.floor() as usize) % path.len();
-                let b_i = ((self.anim_step + 1.0).floor() as usize) % path.len();
-                let xy_a = path[a_i].1;
-                let xy_b = path[b_i].1;
-                (Point::new(xy_a.0.into(), xy_a.1.into()),
-                 Point::new(xy_b.0.into(), xy_b.1.into()))
+                let a_i = self.path_step.min(path.len() - 1);
+                let xy = path[a_i].1;
+                xy
             },
-            Err(_) => (self.pos, self.pos),
+            Err(_) => (self.pos.x() as f32, self.pos.y() as f32),
         };
-        let pos = a * (1.0 - self.anim_step.fract() as f64) + b * (self.anim_step.fract() as f64);
-        draw_circle(pos.x() as f32, pos.y() as f32, self.radius, self.clr);
+        draw_circle(x, y, self.radius, self.clr);
 
         match self.path {
             Ok(ref path) => {
