@@ -10,26 +10,19 @@ use stales_geom_viewer::{
 use euclid::{default::Vector2D, num::Floor};
 
 use std::{
-    cmp::{Ord, Ordering},
-    collections::HashMap,
-    default::Default,
-    fmt::Debug,
-    fs::File, io::Write,
-    iter::{self, Iterator},
-    time::Instant,
-    cell::RefCell,
-    env,
+    cell::RefCell, cmp::{Ord, Ordering}, collections::{BTreeMap, HashMap}, default::Default, env, fmt::Debug, fs::File, io::Write, iter::{self, Iterator}, ops::DerefMut, sync::{Arc, RwLock}, time::{self, Instant}
 };
 
 mod bot;
 mod grid;
 mod obstacle;
+mod command;
 use bot::Bot;
 use grid::{Grid, SquareGrid, HexGrid};
-use obstacle::Factory;
+use command::Command;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum DrawingState {
+pub enum DrawingState {
     Ground,
     Drawing,
     Erasing,
@@ -38,7 +31,7 @@ enum DrawingState {
 type Color = macroquad::color::Color;
 
 #[derive(Debug)]
-enum Object {
+pub enum Object {
     Point(geom::Vertex),
     CircleObj(geom::Circle),
     LineObj(geom::Line2D),
@@ -71,14 +64,71 @@ impl Draw for Object {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum InputMode {
+pub enum InputMode {
     Obstacles(DrawingState),
     Bots(Option<usize>),
     Run((Instant, Instant)),
 }
 
+type CommandHistoryEntry = (Box<dyn Command<State>>, Option<Box<dyn Command<State>>>);
+
+#[derive(Debug, Default)]
+pub struct CommandHistory {
+    data: BTreeMap<time::Instant, CommandHistoryEntry>,
+    time_needle: Option<time::Instant>,
+}
+
+impl CommandHistory {
+    fn take_undo_command(&mut self) -> Option<Box<dyn Command<State>>> {
+        let mut rev_order = self.data.iter().rev();
+        let entry = match self.time_needle {
+            Some(t_ref) => rev_order.filter(|entry| *entry.0 < t_ref).next(),
+            None => rev_order.next(),
+        }?;
+        let cmd = entry.1.1.clone()?;
+        self.time_needle = Some(*entry.0);
+        Some(cmd)
+    }
+
+    fn take_redo_command(&mut self) -> Option<Box<dyn Command<State>>> {
+        let mut order = self.data.iter();
+        let entry = match self.time_needle {
+            Some(t_ref) => order.filter(|entry| *entry.0 >= t_ref).next(),
+            None => order.next(),
+        }?;
+        let cmd = entry.1.1.clone()?;
+        self.time_needle = Some(*entry.0);
+        Some(cmd)
+    }
+
+    fn push_entry(&mut self, entry: CommandHistoryEntry) {
+        if let Some(t_ref) = self.time_needle {
+            // invalidate redos
+            let first_invalid = self.keys().skip_while(|t| **t <= t_ref).cloned().next();
+            if let Some(fi) = first_invalid {
+                let _ = self.split_off(&fi);
+            }
+            self.time_needle = None;
+        }
+        self.insert(Instant::now(), entry);
+    }
+}
+
+impl std::ops::Deref for CommandHistory {
+    type Target = BTreeMap<time::Instant, CommandHistoryEntry>;
+    fn deref(&self) -> &Self::Target {
+        &self.data
+    }
+}
+
+impl std::ops::DerefMut for CommandHistory {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.data
+    }
+}
+
 #[derive(Debug)]
-struct State {
+pub struct State {
     pub objects: GenMap<Object>,
     pub clear_color: Color,
     pub startup: Instant,
@@ -89,6 +139,7 @@ struct State {
     pub sel_cell: Option<usize>,
     pub bots: Vec<genmap::Handle>,
     pub grid: Box<dyn Grid>,
+    pub command_history: CommandHistory,
 }
 
 impl State {
@@ -107,6 +158,7 @@ impl State {
             sel_cell: None,
             bots: vec![],
             grid,
+            command_history: CommandHistory::default(),
         }
     }
 
@@ -146,16 +198,55 @@ impl State {
                              .iter().flat_map(|x| self.objects.get(x))
                                     .map(Draw::vertices).fold(0usize, |acc,verts| acc + verts.len());
         let frametime = get_frame_time();
-        let bots = format!("bots: {:?}", self.bots.iter().map(|b| self.objects.get(*b)).collect::<Vec<_>>());
+        let bots = format!("{:#?}", self.bots.iter().map(|b| self.objects.get(*b)).collect::<Vec<_>>());
+        let command_history = format!("{:#?}", self.command_history);
         format!(r"
 num. of lines: {line_cnt}
 num. of circles: {circle_cnt}
 num. of vertices: {vertex_cnt}
 frametime: {frametime}
 bots: {bots}
+command history: {command_history}
 ")
     }
 
+    pub fn log_line(&mut self, tag: LogTag, msg: &str) {
+        let tick_time = Instant::now().duration_since(self.startup);
+        let secs = tick_time.as_secs();
+        let nanosecs = tick_time.subsec_nanos();
+
+        writeln!(&mut self.logfile, "({tag:?}) [{}s{}ns]: {msg}", secs, nanosecs).expect("couldn't write log line")
+    }
+
+    fn run_command_inner(&mut self, cmd: &Box<dyn Command<State>>, forget: bool) {
+        match cmd.run(self) {
+            Ok(undo) => {
+                self.log_line(LogTag::Command, &format!("executing command {cmd:?}"));
+                if ! forget {
+                    self.command_history.push_entry((cmd.clone(), undo));
+                }
+            },
+            Err(e) => {
+                self.log_line(LogTag::Error, &format!("couldn't execute command {cmd:?}, reason: {e}"));
+            }
+        }
+    }
+
+    fn run_command(&mut self, cmd: &Box<dyn Command<State>>) {
+        self.run_command_inner(cmd, false);
+    }
+
+    pub fn undo(&mut self) {
+        if let Some(cmd) = self.command_history.take_undo_command() {
+            self.run_command_inner(&cmd, true);
+        }
+    }
+
+    pub fn redo(&mut self) {
+        if let Some(cmd) = self.command_history.take_redo_command() {
+            self.run_command_inner(&cmd, true);
+        }
+    }
 }
 
 fn glamVec2_from_point(p: Point) -> glam::Vec2 {
@@ -163,8 +254,9 @@ fn glamVec2_from_point(p: Point) -> glam::Vec2 {
 }
 
 #[derive(Debug)]
-enum LogTag {
+pub enum LogTag {
     Mouse, FrameTime, Select, Timing,
+    Command, Error,
 }
 
 #[macroquad::main("discrete-grid")]
@@ -199,11 +291,7 @@ async fn main() {
     }
 
 
-    let log_line = |state: &mut State, time: &std::time::Duration, tag: LogTag, msg: &str| {
-        let secs = time.as_secs();
-        let nanosecs = time.subsec_nanos();
-        writeln!(&mut state.logfile, "({tag:?}) [{}s{}ns]: {msg}", secs, nanosecs).expect("couldn't write log line")
-    };
+    
     
     {
         let mut state = state.write().unwrap();
@@ -221,12 +309,6 @@ async fn main() {
     let mut state = state.write().unwrap();
 
     {
-        let tick_time = Instant::now().duration_since(state.startup);
-
-        let log_line = |state: &mut State, tag: LogTag, msg: &str| {
-            log_line(state, &tick_time, tag, msg);
-        };
-
 
         let before = Instant::now();
 
@@ -241,20 +323,14 @@ async fn main() {
 
         let after = Instant::now();
         let d = after - before;
-        log_line(&mut state, LogTag::Timing,
+        state.log_line(LogTag::Timing,
                  &format!("recalculating the bot paths took {}s{}ns for {bot_count} bots on a grid with {cell_count}",
                           d.as_secs(), d.subsec_nanos()));
 
     }
 
     loop {
-        let tick_time = Instant::now().duration_since(state.startup);
-
-        let log_line = |state: &mut State, tag: LogTag, msg: &str| {
-            log_line(state, &tick_time, tag, msg);
-        };
-
-        log_line(&mut state, LogTag::FrameTime, &format!("{} / {}", get_frame_time(), get_fps()));
+        state.log_line(LogTag::FrameTime, &format!("{} / {}", get_frame_time(), get_fps()));
 
         if is_quit_requested() { break }
         clear_background(state.clear_color);
@@ -273,13 +349,25 @@ async fn main() {
 
         let mut recalc = false;
         { // input handling
+
+            if is_key_released(KeyCode::Z)
+                && (is_key_down(KeyCode::LeftControl) || is_key_down(KeyCode::RightControl))
+            {
+                if is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift) {
+                    state.redo();
+                } else {
+                    state.undo();
+                }
+            }
+            
+            let command: Arc<RwLock<Option<Box<dyn Command<State>>>>> = Arc::new(RwLock::new(None));
             let mouse_pos = mouse_position();
             if mouse_pos != state.prev_mouse_pos {
-                log_line(&mut state, LogTag::Mouse, &format!("pos {},{}", mouse_pos.0, mouse_pos.1));
+                state.log_line(LogTag::Mouse, &format!("pos {},{}", mouse_pos.0, mouse_pos.1));
                 state.prev_mouse_pos = mouse_pos;
             }
 
-            let grid_interact = |mut state: &mut State, mut grid_func: Box<dyn FnMut(&mut dyn Grid, usize) -> usize>| -> Option<usize> {
+            let grid_interact = |state: &mut State, mut grid_func: Box<dyn FnMut(&mut dyn Grid, usize) -> Option<usize>>| -> Option<usize> {
                 let mut hit_elem = None;
                 for (handle,element) in state.all_elements() {
                     if element.contains_point(&Vector2D::new(mouse_pos.0, mouse_pos.1)) {
@@ -289,27 +377,30 @@ async fn main() {
                 }
                 
                 if let Some(elem) = hit_elem {
-                    log_line(&mut state, LogTag::Select, &format!("selected {:?}", elem));
+                    state.log_line(LogTag::Select, &format!("selected {:?}", elem));
                     None
                 } else {
                     // grid is no longer a registered element
-                    state.grid.xy_idx(mouse_pos.0 as f64, mouse_pos.1 as f64).map(|idx| grid_func(&mut *state.grid, idx))
+                    state.grid.xy_idx(mouse_pos.0 as f64, mouse_pos.1 as f64).map(|idx| grid_func(&mut *state.grid, idx)).flatten()
                 }
             };
 
+            let obstacle_paint_cmd = command.clone();
             let obstacle_paint = |grid: &mut dyn Grid, idx: usize| {
-                match obstacle::factories::Wall::new(idx).new_object(grid) {
-                    Ok(obstacle) => { grid.push_obstacle(obstacle); },
-                    Err(_e) => {},
-                }
-                idx
+                if idx > grid.size().0 * grid.size().1 { return None; }
+                let mut command = obstacle_paint_cmd.write().unwrap();
+                *command = Some(Box::new(command::AddObstacle::new(grid.idx_coords(idx).unwrap())));
+                Some(idx)
             };
             
+            let obstacle_erase_cmd = command.clone();
             let obstacle_erase = |grid: &mut dyn Grid, idx: usize| {
+                if idx > grid.size().0 * grid.size().1 { return None; }
                 if let Some(oidx) = grid.obstacle_idx(idx) {
-                    grid.remove_obstacle(oidx);
+                    let mut command = obstacle_erase_cmd.write().unwrap();
+                    *command = Some(Box::new(command::RemoveObstacle::new(oidx)));
                 }
-                idx
+                Some(idx)
             };
 
             let mut cur_mode =
@@ -340,32 +431,19 @@ async fn main() {
                     }
 
                     if *drawing_state != DrawingState::Ground {
-                        log_line(&mut state, LogTag::Mouse, &format!("clicked {},{}", mouse_pos.0, mouse_pos.1));
-                        
-                        state.sel_cell = grid_interact(
-                            &mut state,
-                            if *drawing_state == DrawingState::Drawing {
-                                Box::new(obstacle_paint)
-                            } else {
-                                Box::new(obstacle_erase)
-                            });
-                        recalc = true;
-                    }
+                        state.log_line(LogTag::Mouse, &format!("clicked {},{}", mouse_pos.0, mouse_pos.1));
 
-                    // if let Some(sel_cell) = state.sel_cell {
-                    //     if let Object::GridObj(grid) = state.objects.get(state.grids[0]).unwrap() {
-                    //         for i in 0..grid.array.len() {
-                    //             let dist = grid.chebyshev_distance(sel_cell, i);
-                    //             let pos = grid.idx_xy(i).unwrap();
-                    //             let pos = (pos.0 as f32, pos.1 as f32);
-                    //             draw_text(&dist.to_string(), pos.0, pos.1, 24.0, WHITE);
-                    //             let pos = (pos.0 + grid.cell_dims().0 as f32/2.0, pos.1 + grid.cell_dims().1 as f32/2.0);
-                    //             draw_circle(pos.0, pos.1, 2.0, WHITE);
-                    //         }
-                    //     } else {
-                    //         unreachable!();
-                    //     }
-                    // }
+                        if state.grid.compute_aabb().contains((mouse_pos.0, mouse_pos.1).into()) {
+                            state.sel_cell = grid_interact(
+                                &mut state,
+                                if *drawing_state == DrawingState::Drawing {
+                                    Box::new(obstacle_paint)
+                                } else {
+                                    Box::new(obstacle_erase)
+                                });
+                            recalc = true;
+                        }
+                    }
 
                     if recalc {
                         let before = Instant::now();
@@ -381,7 +459,7 @@ async fn main() {
 
                         let after = Instant::now();
                         let d = after - before;
-                        log_line(&mut state, LogTag::Timing,
+                        state.log_line(LogTag::Timing,
                                  &format!("recalculating the bot paths took {}s{}ns for {bot_count} bots on a grid with {cell_count}",
                                           d.as_secs(), d.subsec_nanos()));
 
@@ -393,7 +471,7 @@ async fn main() {
                             if is_mouse_button_released(MouseButton::Left) {
                                 grid_interact(&mut state, Box::new(|_grid: &mut dyn Grid, idx: usize| {
                                     *origin_opt = Some(idx);
-                                    idx
+                                    Some(idx)
                                 }));
                             }
                         },
@@ -408,7 +486,7 @@ async fn main() {
                             }
                             if is_mouse_button_released(MouseButton::Left) {
                                 grid_interact(&mut state, Box::new(|_grid: &mut dyn Grid, idx: usize| {
-                                    idx
+                                    Some(idx)
                                 })).inspect(|dest_idx| {
                                     bot_creation_info = Some((*origin_idx, *dest_idx));
                                 });
@@ -429,13 +507,19 @@ async fn main() {
             state.input_mode = cur_mode;
 
             if let Some((origin_idx, dest_idx)) = bot_creation_info {
-                use bot::PathfinderDecorator;
-                let pathfinder = bot::DebugPathFinder::wrap(Box::new(bot::BasePathfinder {}));
-                let bot = Bot::new(&state.grid, pathfinder, origin_idx, dest_idx, random_color());
-                let bot_handle = state.objects.insert(Object::BotObj(RefCell::new(bot)));
-                state.bots.push(bot_handle);
+                let mut command = command.write().unwrap();
+                let (origin, dest) =
+                    (state.grid.idx_coords(origin_idx).unwrap(),
+                     state.grid.idx_coords(dest_idx).unwrap());
+                *command = Some(Box::new(command::AddBot::new(origin, dest)));
             }
+
+            let apply_command = command.clone();
+            if let Some(ref command) = &*apply_command.write().unwrap() {
+                state.run_command(command);
+            };
         }
+
 
         draw_text(&format!("Input mode: {:?}", state.input_mode), 20.0, 20.0, 30.0, DARKGRAY);
 

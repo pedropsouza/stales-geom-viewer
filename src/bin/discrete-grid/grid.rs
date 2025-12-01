@@ -22,6 +22,24 @@ pub trait Grid: Debug + Draw + Select + Element {
 
     fn push_obstacle(&mut self, obstacle: Box<dyn obstacle::Obstacle>) -> usize;
     fn remove_obstacle(&mut self, idx: usize) -> Box<dyn obstacle::Obstacle>;
+
+    fn coords(&self, pos: (usize, usize)) -> Option<&Box<dyn obstacle::Obstacle>> {
+        self.idx(self.coords_idx(pos)?)
+    }
+
+    fn idx_coords(&self, idx: usize) -> Option<(usize, usize)> {
+        let col = idx % self.size().0;
+        let row = (idx - col) / self.size().0;
+        if row > self.size().1 { None }
+        else { Some((col, row)) }
+    }
+
+    fn coords_idx(&self, coords: (usize, usize)) -> Option<usize> {
+        let (col, row) = coords;
+        let idx = col + row * self.size().0;
+        if idx > self.size().0 * self.size().1 { None }
+        else { Some(idx) }
+    }
 }
 
 #[derive(Debug)]

@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 chrono = "0.4.42"
+dyn-clone = "1.0.20"
 euclid = { version = "0.22.11", features = ["serde", "libm"] }
 fnv = "1.0.7"
 genmap = "1.0.3"

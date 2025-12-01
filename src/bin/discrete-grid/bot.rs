@@ -7,6 +7,7 @@ use macroquad::prelude::*;
 use crate::{State, Object, grid::Grid};
 use std::{collections::{ HashMap, HashSet }, sync::RwLock};
 use std::rc::Rc;
+use dyn_clone::DynClone;
 
 #[derive(Debug)]
 pub struct Bot {
@@ -18,6 +19,21 @@ pub struct Bot {
     pub anim_step: f32,
     clr: Color,
     radius: f32,
+}
+
+impl Clone for Bot {
+    fn clone(&self) -> Self {
+        Self {
+            pos: self.pos.clone(),
+            dest_idx: self.dest_idx.clone(),
+            origin_idx: self.origin_idx.clone(),
+            path: self.path.clone(),
+            pathfinder: dyn_clone::clone_box(&*self.pathfinder),
+            anim_step: self.anim_step.clone(),
+            clr: self.clr.clone(),
+            radius: self.radius.clone(),
+        }
+    }
 }
 
 impl Bot {
@@ -92,10 +108,10 @@ impl Select for Bot {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BasePathfinder {}
 
-pub trait Pathfinder: std::fmt::Debug {
+pub trait Pathfinder: std::fmt::Debug + DynClone {
     fn pathfind(&mut self, grid: &Box<dyn Grid>, from: usize, to: usize) -> Result<Vec<(usize, (f32,f32))>, String> {
         let mut space: Vec<(usize, usize, Vec<usize>)> = vec![(from, 0usize, vec![from])];
         let mut needle = 0usize;
@@ -138,6 +154,12 @@ impl Pathfinder for BasePathfinder {}
 
 #[derive(Debug)]
 pub struct DebugPathFinder(Box<dyn Pathfinder>);
+
+impl Clone for DebugPathFinder {
+    fn clone(&self) -> Self {
+        Self { 0: dyn_clone::clone_box(&*self.0) }
+    }
+}
 
 pub trait PathfinderDecorator: Pathfinder {
     fn wrap(other: Box<dyn Pathfinder>) -> Box<dyn Pathfinder>;

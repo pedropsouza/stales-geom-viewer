@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
+use dyn_clone::DynClone;
 
 use crate::grid::Grid;
 
@@ -37,10 +39,9 @@ pub enum FactoryError {
 
 pub type FactoryResult = Result<Box<dyn Obstacle>, FactoryError>;
 
-pub trait Factory {
+pub trait Factory: Debug {
     fn new_object(&mut self, grid: &dyn Grid) -> FactoryResult;
 }
-
 #[derive(Debug)]
 pub struct Boulder {
     pos: usize,
@@ -147,9 +148,29 @@ impl HeterogenousObstacle for Wall {
 }
 
 pub mod factories {
-    use super::{Factory, Grid, FactoryError, FactoryResult};
+    use super::{Factory, FactoryError, FactoryResult, Grid, NullObstacle, Obstacle};
     use rand::random_range;
 
+    #[derive(Debug)]
+    pub struct Replicate {
+        obstacle: Box<dyn Obstacle>,
+    }
+
+    impl Replicate {
+        pub fn new(obstacle: Box<dyn Obstacle>) -> Self {
+            Self { obstacle }
+        }
+    }
+
+    impl Factory for Replicate {
+        fn new_object(&mut self, _grid: &dyn Grid) -> FactoryResult {
+            let mut obstacle: Box<dyn Obstacle> = Box::new(NullObstacle {});
+            std::mem::swap(&mut self.obstacle, &mut obstacle);
+            Ok(obstacle) // FIXME: doesn't check if the grid is the same at all
+        }
+    }
+
+    #[derive(Debug, Clone)]
     pub struct RandomBoulder();
     
     impl RandomBoulder {
@@ -173,6 +194,7 @@ pub mod factories {
         }
     }
 
+    #[derive(Debug, Clone)]
     pub struct Wall(usize);
     
     impl Wall {
