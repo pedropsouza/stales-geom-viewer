@@ -70,60 +70,64 @@ pub enum InputMode {
     Run((Instant, Instant)),
 }
 
-type CommandHistoryEntry = (Box<dyn Command<State>>, Option<Box<dyn Command<State>>>);
+struct CommandHistoryEntry {
+    cmd: Box<dyn Command<State>>,
+    undo_cmd: Option<Box<dyn Command<State>>>,
+}
+
+impl CommandHistoryEntry {
+    fn new(cmd: Box<dyn Command<State>>, undo_cmd: Option<Box<dyn Command<State>>>) -> Self {
+        Self { cmd, undo_cmd }
+    }
+}
+
+impl std::fmt::Debug for CommandHistoryEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:#?}", self.cmd)?;
+        match &self.undo_cmd {
+            Some(undo_cmd) => write!(f, " with undo {undo_cmd:#?}"),
+            None => write!(f, " without undo Command"),
+        }
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct CommandHistory {
-    data: BTreeMap<time::Instant, CommandHistoryEntry>,
-    time_needle: Option<time::Instant>,
+    undo: Vec<(time::Instant, CommandHistoryEntry)>,
+    redo: Vec<(time::Instant, CommandHistoryEntry)>,
 }
 
 impl CommandHistory {
     fn take_undo_command(&mut self) -> Option<Box<dyn Command<State>>> {
-        let mut rev_order = self.data.iter().rev();
-        let entry = match self.time_needle {
-            Some(t_ref) => rev_order.filter(|entry| *entry.0 < t_ref).next(),
-            None => rev_order.next(),
-        }?;
-        let cmd = entry.1.1.clone()?;
-        self.time_needle = Some(*entry.0);
+        let entry = self.undo.pop()?;
+        let cmd = entry.1.undo_cmd.clone()?;
+        self.redo.push(entry);
         Some(cmd)
     }
 
     fn take_redo_command(&mut self) -> Option<Box<dyn Command<State>>> {
-        let mut order = self.data.iter();
-        let entry = match self.time_needle {
-            Some(t_ref) => order.filter(|entry| *entry.0 >= t_ref).next(),
-            None => order.next(),
-        }?;
-        let cmd = entry.1.1.clone()?;
-        self.time_needle = Some(*entry.0);
+        let entry = self.redo.pop()?;
+        let cmd = entry.1.cmd.clone();
+        self.undo.push(entry);
         Some(cmd)
     }
 
     fn push_entry(&mut self, entry: CommandHistoryEntry) {
-        if let Some(t_ref) = self.time_needle {
+        if self.redo.len() > 0 {
             // invalidate redos
-            let first_invalid = self.keys().skip_while(|t| **t <= t_ref).cloned().next();
-            if let Some(fi) = first_invalid {
-                let _ = self.split_off(&fi);
-            }
-            self.time_needle = None;
+            self.redo.clear()
         }
-        self.insert(Instant::now(), entry);
+        self.undo.push((Instant::now(), entry));
     }
-}
-
-impl std::ops::Deref for CommandHistory {
-    type Target = BTreeMap<time::Instant, CommandHistoryEntry>;
-    fn deref(&self) -> &Self::Target {
-        &self.data
+    fn refresh_last_undo(&mut self, refresher: impl FnOnce(&mut CommandHistoryEntry)) {
+        if let Some(last) = self.undo.last_mut() {
+            refresher(&mut last.1);
+        }
     }
-}
-
-impl std::ops::DerefMut for CommandHistory {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.data
+    fn refresh_first_redo(&mut self, refresher: impl FnOnce(&mut CommandHistoryEntry)) {
+        if let Some(first) = self.redo.last_mut() {
+            refresher(&mut first.1);
+        }
     }
 }
 
@@ -218,33 +222,44 @@ command history: {command_history}
         writeln!(&mut self.logfile, "({tag:?}) [{}s{}ns]: {msg}", secs, nanosecs).expect("couldn't write log line")
     }
 
-    fn run_command_inner(&mut self, cmd: &Box<dyn Command<State>>, forget: bool) {
+    fn run_command_inner(&mut self, cmd: &Box<dyn Command<State>>, forget: bool) -> Option<CommandHistoryEntry> {
         match cmd.run(self) {
             Ok(undo) => {
                 self.log_line(LogTag::Command, &format!("executing command {cmd:?}"));
+                let entry = CommandHistoryEntry::new(cmd.clone(), undo);
                 if ! forget {
-                    self.command_history.push_entry((cmd.clone(), undo));
+                    self.command_history.push_entry(entry);
+                    None
+                } else {
+                    Some(entry)
                 }
             },
             Err(e) => {
                 self.log_line(LogTag::Error, &format!("couldn't execute command {cmd:?}, reason: {e}"));
+                None
             }
         }
     }
 
     fn run_command(&mut self, cmd: &Box<dyn Command<State>>) {
-        self.run_command_inner(cmd, false);
+        let _ = self.run_command_inner(cmd, false);
     }
 
     pub fn undo(&mut self) {
         if let Some(cmd) = self.command_history.take_undo_command() {
-            self.run_command_inner(&cmd, true);
+            let entry = self.run_command_inner(&cmd, true);
+            if let Some(entry) = entry {
+                self.command_history.refresh_first_redo(|e| e.cmd = entry.undo_cmd.unwrap());
+            }
         }
     }
 
     pub fn redo(&mut self) {
         if let Some(cmd) = self.command_history.take_redo_command() {
-            self.run_command_inner(&cmd, true);
+            let entry = self.run_command_inner(&cmd, true);
+            if let Some(entry) = entry {
+                self.command_history.refresh_last_undo(|e| e.undo_cmd = entry.undo_cmd);
+            }
         }
     }
 }
@@ -358,6 +373,7 @@ async fn main() {
                 } else {
                     state.undo();
                 }
+                recalc = true; // slightly too eager, observer maybe?
             }
             
             let command: Arc<RwLock<Option<Box<dyn Command<State>>>>> = Arc::new(RwLock::new(None));
