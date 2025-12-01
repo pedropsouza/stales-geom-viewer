@@ -325,8 +325,12 @@ async fn main() {
 
     let mut state = state.write().unwrap();
 
-    {
-
+    let recalc_signaller_sender = state.grid_recalc_signal.0.clone();
+    let recalc_signaller = move || {
+        let sender = recalc_signaller_sender.clone();
+        sender.send(()).expect("signal should always go through");
+    };
+    let recalc_paths = |state: &mut State| {
         let before = Instant::now();
 
         let bots = state.bots.clone();
@@ -341,10 +345,13 @@ async fn main() {
         let after = Instant::now();
         let d = after - before;
         state.log_line(LogTag::Timing,
-                 &format!("recalculating the bot paths took {}s{}ns for {bot_count} bots on a grid with {cell_count}",
-                          d.as_secs(), d.subsec_nanos()));
+                       &format!("recalculating the bot paths took {}s{}ns for {bot_count} bots on a grid with {cell_count}",
+                                d.as_secs(), d.subsec_nanos()));
+    };
 
-    }
+    recalc_paths(&mut state);
+
+    state.grid.add_observer(Box::new(recalc_signaller));
 
     loop {
         state.log_line(LogTag::FrameTime, &format!("{} / {}", get_frame_time(), get_fps()));
@@ -364,7 +371,6 @@ async fn main() {
             draw_rectangle_lines(a.0, a.1, b.0-a.0, b.1-a.1, 2.0, WHITE);
         }
 
-        let mut recalc = false;
         { // input handling
 
             if is_key_released(KeyCode::Z)
@@ -375,7 +381,6 @@ async fn main() {
                 } else {
                     state.undo();
                 }
-                recalc = true; // slightly too eager, observer maybe?
             }
             
             let command: Arc<RwLock<Option<Box<dyn Command<State>>>>> = Arc::new(RwLock::new(None));
@@ -459,29 +464,10 @@ async fn main() {
                                 } else {
                                     Box::new(obstacle_erase)
                                 });
-                            recalc = true;
                         }
                     }
 
-                    if recalc {
-                        let before = Instant::now();
-
-                        let bots = state.bots.clone();
-                        let bot_count = bots.len();
-                        let cell_count = state.grid.size().0 * state.grid.size().1;
-                        for bot in bots {
-                            if let Object::BotObj(bot) = state.objects.get(bot).unwrap() {
-                                bot.borrow_mut().recalc_path(&state.grid);
-                            }
-                        }
-
-                        let after = Instant::now();
-                        let d = after - before;
-                        state.log_line(LogTag::Timing,
-                                 &format!("recalculating the bot paths took {}s{}ns for {bot_count} bots on a grid with {cell_count}",
-                                          d.as_secs(), d.subsec_nanos()));
-
-                    }
+                    
                 },
                 InputMode::Bots(ref mut origin_opt) => {
                     match origin_opt {
@@ -536,6 +522,12 @@ async fn main() {
             if let Some(ref command) = &*apply_command.write().unwrap() {
                 state.run_command(command);
             };
+
+            if state.grid_recalc_signal.1.try_recv().is_ok() {
+                // flush other requests, idempotent
+                let _ = state.grid_recalc_signal.1.try_iter().count();
+                recalc_paths(&mut state);
+            }
         }
 
 
