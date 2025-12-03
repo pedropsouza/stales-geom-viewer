@@ -2,6 +2,7 @@ use chrono::Timelike;
 use macroquad::prelude::*;
 use genmap::GenMap;
 
+use obstacle::Obstacle;
 use stales_geom_viewer::{
     common_traits::*,
     geom::{self, *},
@@ -10,7 +11,7 @@ use stales_geom_viewer::{
 use euclid::{default::Vector2D, num::Floor};
 
 use std::{
-    cell::RefCell, cmp::{Ord, Ordering}, collections::{BTreeMap, HashMap}, default::Default, env, fmt::Debug, fs::File, io::Write, iter::{self, Iterator}, ops::DerefMut, sync::{Arc, RwLock}, time::{self, Instant}
+    cell::RefCell, cmp::{Ord, Ordering}, collections::{BTreeMap, HashMap}, default::Default, env, fmt::Debug, fs::File, io::Write, iter::{self, Iterator}, ops::{Deref, DerefMut}, sync::{Arc, RwLock}, time::{self, Instant}
 };
 
 mod bot;
@@ -132,7 +133,15 @@ impl CommandHistory {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum GameState {
+    Lost,
+    Play,
+    Win,
+    Invalid,
+}
+
+type Handler = Box<dyn Fn(&State) -> Result<GameState, GameState>>;
 pub struct State {
     pub objects: GenMap<Object>,
     pub clear_color: Color,
@@ -147,14 +156,65 @@ pub struct State {
     pub grid: Box<dyn ObservableGrid>,
     pub command_history: CommandHistory,
     pub grid_recalc_signal: (std::sync::mpsc::Sender<()>, std::sync::mpsc::Receiver<()>),
+    pub hero: Option<genmap::Handle>,
+    pub gamestate: GameState,
+    pub goal: Option<(usize, usize)>,
+    pub chain: Vec<Handler>,
+}
+
+impl Debug for State {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("State")
+         .field("objects", &self.objects)
+         .field("clear_color", &self.clear_color)
+         .field("startup", &self.startup)
+         .field("prev_mouse_pos", &self.prev_mouse_pos)
+         .field("logfile", &self.logfile)
+         .field("tick", &self.tick)
+         .field("input_mode", &self.input_mode)
+         .field("sel_cell", &self.sel_cell)
+         .field("bots", &self.bots)
+         .field("grid", &self.grid)
+         .field("command_history", &self.command_history)
+         .field("grid_recalc_signal", &self.grid_recalc_signal)
+         .field("hero", &self.hero)
+         .field("gamestate", &self.gamestate)
+         .field("goal", &self.goal)
+         .field("chain", &self.chain.len())
+         .finish()
+    }
 }
 
 impl State {
-    fn new(grid: Box<dyn ObservableGrid>) -> Self {
+    fn new(mut grid: Box<dyn ObservableGrid>) -> Self {
         use chrono;
         let objects = GenMap::<Object>::with_capacity(1000);
         let cur_time = chrono::Local::now();
         let log_name = format!("./log-{}-{}-{}-{}.txt", cur_time.hour(), cur_time.minute(), cur_time.second(), cur_time.nanosecond());
+        let chain = {
+            let mut chain: Vec<Handler> = vec![];
+            let has_hero = Box::new(|s: &State| {
+                s.hero.map(|_| GameState::Play).ok_or(GameState::Lost)
+            });
+            chain.push(has_hero);
+            let has_goal = Box::new(|s: &State| {
+                s.goal.map(|_| GameState::Play).ok_or(GameState::Invalid)
+            });
+            chain.push(has_goal);
+            let hero_at_goal = Box::new(|s: &State| {
+                let hero = s.hero().unwrap().borrow();
+                let goal = s.goal.unwrap();
+                let hero_coord = hero.cur_grid_coord(&s.grid).ok_or(GameState::Invalid)?;
+                Ok::<GameState, GameState>(if hero_coord == goal {
+                    GameState::Win
+                } else {
+                    GameState::Play
+                })
+            });
+            chain.push(hero_at_goal);
+            chain
+        };
+        
         Self {
             objects: objects,
             clear_color: BLACK,
@@ -167,10 +227,13 @@ impl State {
             bots: vec![],
             grid,
             command_history: CommandHistory::default(),
-            grid_recalc_signal: std::sync::mpsc::channel()
+            grid_recalc_signal: std::sync::mpsc::channel(),
+            hero: None,
+            gamestate: GameState::Play,
+            goal: None,
+            chain,
         }
     }
-
 
     fn add_line(&mut self, l: geom::Line2D) -> genmap::Handle {
         self.objects.insert(Object::LineObj(l))
@@ -266,6 +329,26 @@ command history: {command_history}
                 self.command_history.refresh_last_undo(|e| e.undo_cmd = entry.undo_cmd);
             }
         }
+    }
+
+    pub fn hero(&self) -> Option<&RefCell<Bot>> {
+        let hobj = self.objects.get(self.hero?)?;
+        if let Object::BotObj(ref b) = hobj {
+            Some(b)
+        } else {
+            None
+        }
+    }
+
+    pub fn set_goal(&mut self, goal: Option<(usize, usize)>) {
+        self.goal = goal;
+    }
+
+    fn recalc_gamestate(&mut self) {
+        let state = &self.chain.iter().fold(
+            Ok::<GameState, GameState>(self.gamestate),
+            |state, handler| state.and_then(|_| handler(&self)));
+        self.gamestate = *match state { Ok(v) => v, Err(v) => v };
     }
 }
 
@@ -523,11 +606,11 @@ async fn main() {
                 // flush other requests, idempotent
                 let _ = state.grid_recalc_signal.1.try_iter().count();
                 recalc_paths(&mut state);
+                state.recalc_gamestate();
             }
         }
 
-
-        draw_text(&format!("Input mode: {:?}\ntick: {}", state.input_mode, state.tick), 20.0, 20.0, 30.0, DARKGRAY);
+        draw_text(&format!("Input mode: {:?} | tick: {} | GameState: {:?}", state.input_mode, state.tick, state.gamestate), 20.0, 20.0, 30.0, DARKGRAY);
 
         if is_key_released(KeyCode::R) {
             println!("{}", state.text_digest())

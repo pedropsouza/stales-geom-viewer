@@ -59,6 +59,11 @@ impl Bot {
         pub fn recalc_path(&mut self, grid: &Box<dyn ObservableGrid>) {
         self.path = self.pathfinder.pathfind(grid, self.origin_idx, self.dest_idx);
     }
+
+    pub fn cur_grid_coord(&self, grid: &Box<dyn ObservableGrid>) -> Option<(usize,usize)> {
+        let idx = self.path.as_ref().ok()?.get(self.path_step)?.0;
+        grid.idx_coords(idx)
+    }
 }
 
 impl Draw for Bot {
